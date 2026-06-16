@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>特殊模型 — 动态演示</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei',sans-serif;background:#0a0f1e;color:#e2e8f0;height:100vh;display:flex}
+.sidebar{width:300px;background:#111827;border-right:1px solid #1e293b;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;font-size:.88em}
+.sidebar h3{font-size:.9em;color:#60a5fa;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.tab-btn{padding:11px 14px;background:#1a2332;border:1px solid #2a3548;color:#cbd5e1;border-radius:10px;cursor:pointer;font-size:.85em;text-align:left;transition:all .2s}
+.tab-btn:hover{border-color:#60a5fa}
+.tab-btn.active{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#3b82f6;color:#fff}
+.control-group{background:#1a2332;border-radius:10px;padding:14px;border:1px solid #2a3548}
+.control-group input[type=range]{width:100%;accent-color:#60a5fa}
+.info-box{background:#1a2332;border-radius:10px;padding:14px;font-size:.78em;line-height:1.8;color:#94a3b8;border:1px solid #2a3548}
+.info-box b{color:#f1f5f9}.info-box .hl{color:#fbbf24;font-weight:bold}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#0f172a 0%,#0a0f1e 100%)}
+canvas{border-radius:10px}
+.back-link{color:#60a5fa;text-decoration:none;font-size:.82em;display:flex;align-items:center;gap:4px}
+.vd{color:#60a5fa;font-weight:bold}
+</style>
+</head>
+<body>
+<div class="sidebar" id="sidebar"></div>
+<div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d'),sidebar=document.getElementById('sidebar');
+const W=750,H=600;canvas.width=W;canvas.height=H;
+let currentModel='halfangle',time=0,speed=1;
+const trails=[];
+
+function addTrail(x,y){trails.push({x,y,life:1});if(trails.length>50)trails.shift()}
+function drawTrails(){
+  for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.55})`;ctx.fill();t.life-=0.025}
+  for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1);
+}
+function glowPt(x,y,r,color){
+  for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(x,y,r+i*5,0,Math.PI*2);ctx.fillStyle=color.replace('1',(0.1-i*0.02).toString());ctx.fill()}
+}
+function dp(x,y,r,color,label,glow=false){
+  if(glow)glowPt(x,y,r,color);
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+  if(label){ctx.fillStyle='#f1f5f9';ctx.font='bold 13px sans-serif';ctx.fillText(label,x+10,y-10)}
+}
+function dl(x1,y1,x2,y2,color,width=2,dashed=false){
+  if(dashed)ctx.setLineDash([8,5]);else ctx.setLineDash([]);
+  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
+}
+function fillTri(a,b,c,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(c.x,c.y);ctx.closePath();ctx.fill()}
+
+// ═══════════ 半角模型 ═══════════
+function renderHalfAngle(){
+  ctx.clearRect(0,0,W,H);
+  let sqX=195,sqY=85,sqS=370;
+  let A={x:sqX,y:sqY},B={x:sqX+sqS,y:sqY},C={x:sqX+sqS,y:sqY+sqS},D={x:sqX,y:sqY+sqS};
+  // Animate E and F
+  let eParam=0.13+Math.abs(Math.sin(time*0.5*speed))*0.7;
+  let fParam=0.18+Math.sin(time*0.48*speed+1)*0.18;
+  let E={x:C.x,y:sqY+sqS*eParam};
+  let F={x:sqX+sqS*fParam,y:D.y};
+
+  dl(A.x,A.y,B.x,B.y,'#475569',2);dl(B.x,B.y,C.x,C.y,'#475569',2);
+  dl(C.x,C.y,D.x,D.y,'#475569',2);dl(D.x,D.y,A.x,A.y,'#475569',2);
+  dl(A.x,A.y,E.x,E.y,'#60a5fa',3.5);dl(A.x,A.y,F.x,F.y,'#60a5fa',3.5);
+  dl(E.x,E.y,F.x,F.y,'#34d399',3);
+
+  // Rotate △ADF 90° clockwise → △ABG
+  let dfx=F.x-A.x,dfy=F.y-A.y;
+  let G={x:A.x-dfy,y:A.y+dfx};
+  dp(G.x,G.y,4,'#f472b6','G');
+  dl(A.x,A.y,G.x,G.y,'#f472b6',1.5,true);
+
+  // Show rotation
+  fillTri(A,D,F,'rgba(244,114,182,0.08)');
+  fillTri(A,B,G,'rgba(244,114,182,0.08)');
+
+  let BE=C.y-E.y,DF=F.x-D.x,EF=Math.hypot(E.x-F.x,E.y-F.y);
+  let match=Math.abs(BE+DF-EF)<8;
+
+  // 45° angle at A
+  let aE=Math.atan2(E.y-A.y,E.x-A.x),aF=Math.atan2(F.y-A.y,F.x-A.x);
+  ctx.beginPath();ctx.arc(A.x,A.y,48,aF,aE);ctx.strokeStyle='#fbbf24';ctx.lineWidth=3.5;ctx.stroke();
+  ctx.fillStyle='#fbbf24';ctx.font='bold 15px sans-serif';
+  let midAng=(aF+aE)/2;
+  ctx.fillText('45°',A.x+55*Math.cos(midAng),A.y+55*Math.sin(midAng)-10);
+
+  dp(A.x,A.y,6,'#f8fafc','A');dp(B.x,B.y,5,'#f8fafc','B');dp(C.x,C.y,5,'#f8fafc','C');dp(D.x,D.y,5,'#f8fafc','D');
+  dp(E.x,E.y,6,'#60a5fa','E',true);dp(F.x,F.y,6,'#60a5fa','F',true);
+
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('半角模型（正方形内45°）',20,32);
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+  ctx.fillText(`BE = ${BE.toFixed(0)}  |  DF = ${DF.toFixed(0)}`,20,54);
+  ctx.fillText(`BE + DF = ${(BE+DF).toFixed(0)}  |  EF = ${EF.toFixed(0)}`,20,76);
+  ctx.fillStyle=match?'#34d399':'#94a3b8';ctx.font='bold 14px sans-serif';
+  ctx.fillText(match?'✓ EF = BE + DF ✓':'EF ≈ BE + DF',20,100);
+  ctx.fillText('✨ △ADF绕A旋转90°→△ABG，证全等',20,122);
+}
+
+// ═══════════ 瓜豆原理 ═══════════
+function renderGuadou(){
+  ctx.clearRect(0,0,W,H);
+  let O={x:215,y:315},rM=135,P={x:515,y:315},scale=0.52,rot=Math.PI/3;
+  let A={x:O.x+rM*Math.cos(time*0.6*speed),y:O.y+rM*Math.sin(time*0.6*speed)};
+  let dx=A.x-P.x,dy=A.y-P.y;
+  let B={x:P.x+scale*(dx*Math.cos(rot)-dy*Math.sin(rot)),y:P.y+scale*(dx*Math.sin(rot)+dy*Math.cos(rot))};
+  addTrail(B.x,B.y);drawTrails();
+
+  // Master circle
+  ctx.beginPath();ctx.arc(O.x,O.y,rM,0,Math.PI*2);ctx.strokeStyle='#334155';ctx.lineWidth=2;ctx.stroke();
+  // Slave circle
+  let odx=O.x-P.x,ody=O.y-P.y;
+  let Op={x:P.x+scale*(odx*Math.cos(rot)-ody*Math.sin(rot)),y:P.y+scale*(odx*Math.sin(rot)+ody*Math.cos(rot))};
+  let rS=rM*scale;
+  ctx.beginPath();ctx.arc(Op.x,Op.y,rS,0,Math.PI*2);ctx.strokeStyle='#f472b6';ctx.lineWidth=2.5;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);
+
+  dl(P.x,P.y,A.x,A.y,'#60a5fa',3);dl(P.x,P.y,B.x,B.y,'#f472b6',3);
+  dl(A.x,A.y,B.x,B.y,'#475569',1,true);dl(O.x,O.y,Op.x,Op.y,'#475569',1,true);
+
+  // Slave orbit dots
+  ctx.fillStyle='rgba(244,114,182,0.3)';
+  for(let i=0;i<40;i++){
+    let ang=i/40*Math.PI*2;
+    let tap={x:O.x+rM*Math.cos(ang),y:O.y+rM*Math.sin(ang)};
+    let tdx=tap.x-P.x,tdy=tap.y-P.y;
+    let tbp={x:P.x+scale*(tdx*Math.cos(rot)-tdy*Math.sin(rot)),y:P.y+scale*(tdx*Math.sin(rot)+tdy*Math.cos(rot))};
+    ctx.beginPath();ctx.arc(tbp.x,tbp.y,2,0,Math.PI*2);ctx.fill();
+  }
+
+  // Angle arc at P
+  let aA=Math.atan2(A.y-P.y,A.x-P.x),aB=Math.atan2(B.y-P.y,B.x-P.x);
+  ctx.beginPath();ctx.arc(P.x,P.y,42,aB,aA);ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke();
+  ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';
+  ctx.fillText('60°',P.x+45*Math.cos((aA+aB)/2),P.y+45*Math.sin((aA+aB)/2)-5);
+
+  dp(O.x,O.y,4,'#64748b','O');dp(Op.x,Op.y,4,'#64748b',"O'");
+  dp(P.x,P.y,6,'#f8fafc','P');dp(A.x,A.y,6,'#60a5fa','A',true);dp(B.x,B.y,7,'#f472b6','B',true);
+
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('瓜豆原理',20,32);
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+  ctx.fillText('种瓜得瓜，种豆得豆',20,52);
+  ctx.fillText('A沿蓝圆运动（主动点）',20,74);
+  ctx.fillText('B从A旋转60°+缩放得到（从动点）',20,96);
+  ctx.fillText('✨ B的轨迹也是圆！金色轨迹为证',20,120);
+}
+
+// ═══════════ 旋转全等 ═══════════
+function renderRotation(){
+  ctx.clearRect(0,0,W,H);
+  let O={x:375,y:325},rA=145,rB=125;
+  let baseAngle=time*0.5*speed,fixedAngle=1.0;
+  let A1={x:O.x+rA*Math.cos(baseAngle),y:O.y+rA*Math.sin(baseAngle)};
+  let B1={x:O.x+rB*Math.cos(baseAngle+0.65),y:O.y+rB*Math.sin(baseAngle+0.65)};
+  let A2={x:O.x+rA*Math.cos(baseAngle+fixedAngle),y:O.y+rA*Math.sin(baseAngle+fixedAngle)};
+  let B2={x:O.x+rB*Math.cos(baseAngle+fixedAngle+0.65),y:O.y+rB*Math.sin(baseAngle+fixedAngle+0.65)};
+  addTrail(A2.x,A2.y);drawTrails();
+
+  fillTri(O,A1,B1,'rgba(96,165,250,0.1)');fillTri(O,A2,B2,'rgba(244,114,182,0.1)');
+  dl(O.x,O.y,A1.x,A1.y,'#60a5fa',3.5);dl(O.x,O.y,B1.x,B1.y,'#60a5fa',3);dl(A1.x,A1.y,B1.x,B1.y,'#60a5fa',2.5);
+  dl(O.x,O.y,A2.x,A2.y,'#f472b6',3.5);dl(O.x,O.y,B2.x,B2.y,'#f472b6',3);dl(A2.x,A2.y,B2.x,B2.y,'#f472b6',2.5);
+  dl(A1.x,A1.y,A2.x,A2.y,'#fbbf24',2.5,true);
+  dl(B1.x,B1.y,B2.x,B2.y,'#34d399',2.5,true);
+
+  ctx.beginPath();ctx.arc(O.x,O.y,58,baseAngle,baseAngle+fixedAngle);ctx.strokeStyle='#f8fafc';ctx.lineWidth=2.5;ctx.stroke();
+  let deg=(fixedAngle*180/Math.PI).toFixed(0);
+  ctx.fillStyle='#f8fafc';ctx.font='bold 14px sans-serif';
+  ctx.fillText(`${deg}°`,O.x+62*Math.cos(baseAngle+fixedAngle/2),O.y+62*Math.sin(baseAngle+fixedAngle/2)-8);
+
+  let lenAB=Math.hypot(A1.x-B1.x,A1.y-B1.y),lenA2B2=Math.hypot(A2.x-B2.x,A2.y-B2.y);
+  dp(O.x,O.y,6,'#f8fafc','O');dp(A1.x,A1.y,5,'#60a5fa','A');dp(B1.x,B1.y,4,'#60a5fa','B');
+  dp(A2.x,A2.y,6,'#f472b6',"A'",true);dp(B2.x,B2.y,5,'#f472b6',"B'",true);
+
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('旋转全等（手拉手变形）',20,32);
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+  ctx.fillText('△OAB绕O旋转得△OA\'B\'',20,52);
+  ctx.fillText(`AB=${lenAB.toFixed(0)}, A'B'=${lenA2B2.toFixed(0)}（相等）`,20,74);
+  ctx.fillText('旋转不改变大小和形状（全等）',20,96);
+  ctx.fillText('✨ 对应点连线夹角 = 旋转角',20,118);
+}
+
+function render(){
+  switch(currentModel){
+    case'halfangle':renderHalfAngle();break;case'guadou':renderGuadou();break;case'rotation':renderRotation();break;
+  }
+}
+
+function buildSidebar(){
+  let html=`<a href="index.html" class="back-link">← 返回首页</a>`;
+  let models=[
+    {id:'halfangle',name:'🔷 半角模型 · 验证EF=BE+DF'},
+    {id:'guadou',name:'🫘 瓜豆原理 · 主从联动'},
+    {id:'rotation',name:'🔄 手拉手旋转 · 全等演示'},
+  ];
+  for(let m of models)html+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.name}</button>`;
+  html+=`<div class="control-group"><h3>⚡ 动画速度</h3>
+    <input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="speedS">
+    <span style="font-size:.75em;color:#64748b">当前: <span class="vd" id="speedV">${speed.toFixed(1)}x</span></span>
+  </div>`;
+  let infos={
+    halfangle:'<b>半角模型：</b><br>正方形中∠EAF=45°<br>→ △ADF绕A<span class="hl">旋转90°</span>→△ABG<br>→ 证△AGE≅△AFE<br>→ <span class="hl">EF = BE + DF</span><br>→ 将"分散"线段转化为"连续"线段',
+    guadou:'<b>瓜豆原理：</b><br>主动点轨迹是什么→从动点就是什么<br>→ 圆→圆，直线→直线<br>→ <span class="hl">变换保持曲线类型</span><br>→ 用于轨迹类最值问题',
+    rotation:'<b>旋转全等：</b><br>共顶点两等腰△＝旋转关系<br>→ <span class="hl">△OAB ≅ △OA\'B\'</span><br>→ 对应边相等，夹角=旋转角<br>→ 证线段相等+夹角的核心工具',
+  };
+  html+=`<div class="info-box">${infos[currentModel]}</div>`;
+  sidebar.innerHTML=html;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildSidebar();render()}));
+  document.getElementById('speedS').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('speedV').textContent=speed.toFixed(1)});
+}
+
+function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}
+buildSidebar();render();requestAnimationFrame(animate);
+</script>
+</body>
+</html>

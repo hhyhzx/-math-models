@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>初中数学重要模型 — 动态演示</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;background:#0a0f1e;color:#e2e8f0;min-height:100vh;overflow-x:hidden}
+.bg-anim{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.bg-anim canvas{width:100%;height:100%}
+.content{position:relative;z-index:1}
+.header{text-align:center;padding:56px 24px 40px;position:relative}
+.header h1{font-size:2.8em;background:linear-gradient(135deg,#60a5fa,#a78bfa,#f472b6,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:300% 300%;animation:shimmer 4s ease-in-out infinite;margin-bottom:12px}
+@keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.header p{color:#94a3b8;font-size:1.15em;max-width:600px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:28px;padding:20px 48px 60px;max-width:1500px;margin:0 auto}
+.card{background:linear-gradient(135deg,#1a2332 0%,#151d2b 100%);border-radius:20px;padding:32px;border:1px solid #2a3548;transition:all .35s cubic-bezier(.4,0,.2,1);cursor:pointer;text-decoration:none;color:inherit;display:block;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(96,165,250,.06),transparent);transition:left .6s}
+.card:hover{transform:translateY(-6px);border-color:#60a5fa;box-shadow:0 8px 40px rgba(96,165,250,.15)}
+.card:hover::before{left:100%}
+.card .icon{font-size:2.8em;margin-bottom:16px;display:block}
+.card h2{font-size:1.35em;margin-bottom:10px;color:#f1f5f9}
+.card .models{color:#94a3b8;font-size:.9em;line-height:2}
+.card .models span{display:inline-block;background:rgba(96,165,250,.12);color:#93c5fd;padding:4px 12px;border-radius:14px;margin:2px 5px;font-size:.85em;border:1px solid rgba(96,165,250,.15)}
+.card .desc{margin-top:14px;color:#64748b;font-size:.85em;line-height:1.6}
+.card .tag{position:absolute;top:18px;right:18px;background:#059669;color:#fff;padding:3px 10px;border-radius:10px;font-size:.7em;animation:pulse-tag 2s ease-in-out infinite}
+@keyframes pulse-tag{0%,100%{opacity:1}50%{opacity:.65}}
+</style>
+</head>
+<body>
+<div class="bg-anim"><canvas id="bgCanvas"></canvas></div>
+<div class="content">
+<div class="header">
+  <h1>初中数学重要模型</h1>
+  <p>每个模型都有持续动态演示 —— 拖动参数、观察变化，让抽象的数学概念变得直观可见</p>
+</div>
+<div class="grid">
+  <a href="01-functions.html" class="card">
+    <span class="tag">动点追踪</span>
+    <span class="icon">📈</span><h2>函数模型</h2>
+    <div class="models"><span>一次函数</span><span>二次函数</span><span>反比例函数</span></div>
+    <p class="desc">动点沿图像运动，斜率三角形、对称轴、定积矩形可视化</p>
+  </a>
+  <a href="02-triangles.html" class="card">
+    <span class="tag">旋转/滑动</span>
+    <span class="icon">📐</span><h2>三角形模型</h2>
+    <div class="models"><span>手拉手</span><span>一线三等角</span><span>倍长中线</span><span>A字/X字相似</span></div>
+    <p class="desc">旋转全等、角度摇摆、截线滑动 —— 相似与全等的本质</p>
+  </a>
+  <a href="03-circles.html" class="card">
+    <span class="tag">恒等验证</span>
+    <span class="icon">⭕</span><h2>圆模型</h2>
+    <div class="models"><span>垂径定理</span><span>圆周角定理</span><span>切线性质</span><span>圆幂定理</span></div>
+    <p class="desc">弦旋转、P跑圈、乘积恒等 —— 圆中最优美的几个关系</p>
+  </a>
+  <a href="04-optimization.html" class="card">
+    <span class="tag">最优追踪</span>
+    <span class="icon">🎯</span><h2>最值模型</h2>
+    <div class="models"><span>将军饮马</span><span>胡不归</span><span>阿氏圆</span><span>费马点</span></div>
+    <p class="desc">动点滑动找最小值，距离条实时对比 —— 几何最优化的核心</p>
+  </a>
+  <a href="05-special.html" class="card">
+    <span class="tag">经典构造</span>
+    <span class="icon">🔷</span><h2>特殊模型</h2>
+    <div class="models"><span>半角模型</span><span>瓜豆原理</span><span>手拉手旋转</span></div>
+    <p class="desc">正方形中45°的秘密、主动点与从动点的轨迹联动</p>
+  </a>
+</div>
+</div>
+<script>
+const bgC=document.getElementById('bgCanvas'),bgX=bgC.getContext('2d');
+let bgT=0;
+function resizeBg(){bgC.width=window.innerWidth;bgC.height=window.innerHeight}
+resizeBg();window.addEventListener('resize',resizeBg);
+function drawBg(){
+  bgX.clearRect(0,0,bgC.width,bgC.height);
+  for(let i=0;i<20;i++){
+    let x=(Math.sin(bgT*0.3+i*1.7)*0.5+0.5)*bgC.width;
+    let y=(Math.cos(bgT*0.4+i*2.1)*0.5+0.5)*bgC.height;
+    let r=2+Math.sin(bgT+i)*1.5;
+    bgX.beginPath();bgX.arc(x,y,r,0,Math.PI*2);bgX.fillStyle=`rgba(96,165,250,${0.08+Math.sin(bgT+i)*0.04})`;bgX.fill();
+    if(i<19){
+      let x2=(Math.sin(bgT*0.3+(i+1)*1.7)*0.5+0.5)*bgC.width;
+      let y2=(Math.cos(bgT*0.4+(i+1)*2.1)*0.5+0.5)*bgC.height;
+      bgX.beginPath();bgX.moveTo(x,y);bgX.lineTo(x2,y2);bgX.strokeStyle='rgba(96,165,250,0.04)';bgX.lineWidth=1;bgX.stroke();
+    }
+  }
+  bgT+=0.015;requestAnimationFrame(drawBg)
+}
+drawBg();
+</script>
+</body>
+</html>

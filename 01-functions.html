@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>函数模型 — 动态演示</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei',sans-serif;background:#0a0f1e;color:#e2e8f0;height:100vh;display:flex}
+.sidebar{width:300px;background:#111827;border-right:1px solid #1e293b;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;font-size:.88em}
+.sidebar h3{font-size:.9em;color:#60a5fa;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.tab-btn{padding:11px 14px;background:#1a2332;border:1px solid #2a3548;color:#cbd5e1;border-radius:10px;cursor:pointer;font-size:.85em;text-align:left;transition:all .2s}
+.tab-btn:hover{border-color:#60a5fa}
+.tab-btn.active{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#3b82f6;color:#fff}
+.control-group{background:#1a2332;border-radius:10px;padding:14px;border:1px solid #2a3548}
+.control-group label{display:flex;justify-content:space-between;align-items:center;font-size:.8em;color:#94a3b8;margin-bottom:3px}
+.control-group input[type=range]{width:100%;accent-color:#60a5fa;margin-bottom:6px}
+.phase-bar{height:3px;background:#1e293b;border-radius:3px;margin-top:2px;overflow:hidden}
+.phase-bar .fill{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa,#f472b6,#34d399);border-radius:3px;transition:width .6s}
+.phase-label{font-size:.75em;color:#64748b;text-align:center;margin-top:2px}
+.info-box{background:#1a2332;border-radius:10px;padding:14px;font-size:.78em;line-height:1.8;color:#94a3b8;border:1px solid #2a3548}
+.info-box b{color:#f1f5f9}.info-box .hl{color:#fbbf24;font-weight:bold}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#0f172a 0%,#0a0f1e 100%)}
+canvas{border-radius:10px}
+.back-link{color:#60a5fa;text-decoration:none;font-size:.82em;display:flex;align-items:center;gap:4px}
+.vd{color:#60a5fa;font-weight:bold}
+</style>
+</head>
+<body>
+<div class="sidebar" id="sidebar"></div>
+<div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d'),sidebar=document.getElementById('sidebar');
+const W=750,H=600;canvas.width=W;canvas.height=H;
+const OX=W/2,OY=H/2,SCALE=55;
+let currentModel='linear',time=0,speed=1;
+let params={k:1.5,b:1,a:1,B:-2,c:-3,K:3};
+const trails=[]; // For trail effects (up to 40 entries)
+const flashAlpha=0; // Flash effect for confirmations
+
+function tx(x){return OX+x*SCALE}
+function ty(y){return OY-y*SCALE}
+
+function drawGrid(){
+  ctx.strokeStyle='#1e293b';ctx.lineWidth=1;
+  for(let x=-10;x<=10;x++){ctx.beginPath();ctx.moveTo(tx(x),0);ctx.lineTo(tx(x),H);ctx.stroke()}
+  for(let y=-9;y<=9;y++){ctx.beginPath();ctx.moveTo(0,ty(y));ctx.lineTo(W,ty(y));ctx.stroke()}
+  ctx.strokeStyle='#334155';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,OY);ctx.lineTo(W,OY);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(OX,0);ctx.lineTo(OX,H);ctx.stroke();
+  ctx.fillStyle='#475569';ctx.font='11px sans-serif';
+  for(let x=-9;x<=9;x++)if(x!==0)ctx.fillText(x,tx(x)-8,OY+16);
+  for(let y=-7;y<=7;y++)if(y!==0)ctx.fillText(y,OX+5,ty(y)+4);
+  ctx.fillText('O',OX+4,OY+16);
+}
+
+function glow(x,y,r,color,alpha){
+  for(let i=3;i>=0;i--){
+    ctx.beginPath();ctx.arc(tx(x),ty(y),r+i*4,0,Math.PI*2);
+    ctx.fillStyle=color.replace('1',(alpha*(0.15-i*0.03)).toString());ctx.fill();
+  }
+}
+function dot(x,y,color,r=5,label='',glowOn=false){
+  if(glowOn)glow(x,y,r,color,1);
+  ctx.beginPath();ctx.arc(tx(x),ty(y),r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+  if(label){ctx.fillStyle='#f1f5f9';ctx.font='bold 13px sans-serif';ctx.fillText(label,tx(x)+8,ty(y)-8)}
+}
+function drawLine(x1,y1,x2,y2,color,width=2,dashed=false){
+  if(dashed)ctx.setLineDash([8,5]);else ctx.setLineDash([]);
+  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(tx(x1),ty(y1));ctx.lineTo(tx(x2),ty(y2));ctx.stroke();ctx.setLineDash([]);
+}
+
+// Trail management
+function addTrail(x,y){trails.push({x,y,life:1});if(trails.length>50)trails.shift()}
+function drawTrails(){
+  for(let t of trails){
+    ctx.beginPath();ctx.arc(tx(t.x),ty(t.y),3,0,Math.PI*2);
+    ctx.fillStyle=`rgba(251,191,36,${t.life*0.6})`;ctx.fill();
+    t.life-=0.03;
+  }
+  // Remove dead trails
+  for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1);
+}
+
+// Phase calculation: cycles through phases
+function getPhase(){return Math.floor((time*0.25)%4)} // 0-3 cycling
+
+// ═══════════ 一次函数 ═══════════
+function renderLinear(){
+  drawGrid();
+  const{k,b}=params;
+  // Draw line
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=3.5;
+  ctx.beginPath();let first=true;
+  for(let px=0;px<W;px++){let mx=(px-OX)/SCALE,my=k*mx+b,py=ty(my);if(first){ctx.moveTo(px,py);first=false}else ctx.lineTo(px,py)}
+  ctx.stroke();
+
+  // Animated point with trail
+  let phase=time*0.5*speed;
+  let xp=(phase%6)-3; // -3 to 3
+  if(xp<-3)xp=-3;if(xp>3)xp=3;
+  let yp=k*xp+b;
+  if(Math.floor(time*0.5*speed/6)%2===0){
+    // Moving right
+    xp=(phase%6)-3;
+  } else {
+    // Moving left
+    xp=3-(phase%6);
+  }
+  xp=(phase%6)-3;
+  if(xp<-2.8||xp>2.8){trails.length=0}
+  addTrail(xp,yp);
+  drawTrails();
+
+  let pulse=Math.sin(time*3*speed)*0.4+0.6;
+  dot(xp,yp,'#fbbf24',6+pulse*3,'P',true);
+
+  // Slope triangle on the moving point
+  drawLine(xp,yp,xp+1,yp,'#f59e0b',2);
+  drawLine(xp+1,yp,xp+1,yp+k,'#f59e0b',2);
+  ctx.fillStyle='#f59e0b';ctx.font='bold 12px sans-serif';
+  ctx.fillText('1',tx(xp+0.3),ty(yp)+20);
+  ctx.fillText(`${k}`,tx(xp+1)+6,ty(yp+k/2)+4);
+
+  // Intercepts
+  if(k!==0)dot(-b/k,0,'#34d399',5,`(${(-b/k).toFixed(1)},0)`);
+  dot(0,b,'#a78bfa',5,`(0,${b})`);
+
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 17px sans-serif';
+  ctx.fillText(`y = ${k.toFixed(1)}x ${b>=0?'+':''}${b}`,20,30);
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+  ctx.fillText(`斜率 k=${k} → 直线${k>0?'↗上升':'↘下降'}，|k|越大越陡`,20,52);
+  ctx.fillText(`截距 b=${b} → 与y轴交于(0,${b})`,20,72);
+  ctx.fillText('✨ 黄点留痕迹，Δy/Δx始终=k',20,96);
+}
+
+// ═══════════ 二次函数 ═══════════
+function renderQuadratic(){
+  drawGrid();
+  const{a,B,c}=params;let b=B;
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=3.5;
+  ctx.beginPath();let first=true;
+  for(let px=0;px<W;px++){let mx=(px-OX)/SCALE,my=a*mx*mx+b*mx+c,py=ty(my);if(first){ctx.moveTo(px,py);first=false}else ctx.lineTo(px,py)}
+  ctx.stroke();
+
+  let vx=-b/(2*a),vy=a*vx*vx+b*vx+c;
+
+  // Pulsing axis of symmetry
+  let pulseAlpha=Math.sin(time*2*speed)*0.35+0.65;
+  ctx.strokeStyle=`rgba(167,139,250,${pulseAlpha})`;ctx.lineWidth=2.5;ctx.setLineDash([10,6]);
+  ctx.beginPath();ctx.moveTo(tx(vx),0);ctx.lineTo(tx(vx),H);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#a78bfa';ctx.font='bold 13px sans-serif';
+  ctx.fillText(`对称轴 x=${vx.toFixed(1)}`,tx(vx)+8,35);
+
+  // Two symmetric points bouncing with trail
+  let phase=time*speed;
+  let offset=((phase%5)/5)*2.8; // 0 to 2.8
+  let direction=Math.floor(phase/5)%2;
+  if(direction===1)offset=2.8-offset;
+  let px1=vx+offset,py1=a*px1*px1+b*px1+c;
+  let px2=vx-offset,py2=a*px2*px2+b*px2+c;
+
+  addTrail(px1,py1);addTrail(px2,py2);
+  drawTrails();
+
+  let pulse1=Math.sin(time*3*speed)*0.4+0.6;
+  dot(px1,py1,'#fbbf24',5+pulse1*2,'');
+  dot(px2,py2,'#fbbf24',5+pulse1*2,'');
+  drawLine(px1,py1,px2,py2,'#fbbf24',1.5,true);
+
+  // Vertex with glow
+  glow(vx,vy,8,'#f472b6',1);
+  dot(vx,vy,'#f472b6',8,`顶点(${vx.toFixed(1)},${vy.toFixed(1)})`);
+
+  // Roots
+  let disc=b*b-4*a*c;
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 17px sans-serif';
+  ctx.fillText(`y = ${a}x² ${b>=0?'+':''}${b}x ${c>=0?'+':''}${c}`,20,30);
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+  ctx.fillText(`a=${a}→开口${a>0?'向上':'向下'}，|a|越大越窄`,20,52);
+  if(disc>0.01){
+    let r1=(-b-Math.sqrt(disc))/(2*a),r2=(-b+Math.sqrt(disc))/(2*a);
+    dot(r1,0,'#34d399',6,`x₁=${r1.toFixed(1)}`);
+    dot(r2,0,'#34d399',6,`x₂=${r2.toFixed(1)}`);
+    ctx.fillText(`Δ=${disc.toFixed(1)}>0, 两个实根`,20,72);
+  }else if(Math.abs(disc)<0.05){
+    dot(vx,0,'#34d399',6,'相切');ctx.fillText(`Δ≈0, 与x轴相切`,20,72);
+  }else{ctx.fillText(`Δ=${disc.toFixed(1)}<0, 无实根`,20,72)}
+  ctx.fillText('✨ 两个黄点关于对称轴对称，到轴距离相等',20,96);
+}
+
+// ═══════════ 反比例函数 ═══════════
+function renderInverse(){
+  drawGrid();
+  const k=params.K;
+  const ptsSave=[];
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=3.5;
+  [1,-1].forEach(sign=>{
+    ctx.beginPath();let f=true;
+    for(let px=0;px<W;px++){
+      let mx=(px-OX)/SCALE;
+      if(sign>0&&mx<0.08||sign<0&&mx>-0.08)continue;
+      if(mx>9||mx<-9){f=true;continue}
+      let my=k/mx,py=ty(my);
+      if(py<-80||py>H+80){f=true;continue}
+      if(f){ctx.moveTo(px,py);f=false}else ctx.lineTo(px,py)
+    }
+    ctx.stroke();
+  });
+
+  // Moving point
+  let xp=2.5+Math.sin(time*0.7*speed)*1.8;
+  if(xp<0.2)xp=0.2;
+  let yp=k/xp;
+  addTrail(xp,yp);drawTrails();
+  let pulse=Math.sin(time*3*speed)*0.4+0.6;
+  dot(xp,yp,'#fbbf24',6+pulse*2,'P',true);
+
+  // Rectangle showing constant area
+  let rectAlpha=Math.sin(time*2*speed)*0.15+0.2;
+  ctx.fillStyle=`rgba(251,191,36,${rectAlpha})`;
+  let rx=tx(0),ry=ty(yp),rw=tx(xp)-tx(0),rh=ty(0)-ty(yp);
+  ctx.fillRect(rx,Math.min(ry,ty(0)),rw,Math.abs(rh));
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+  ctx.strokeRect(rx,Math.min(ry,ty(0)),rw,Math.abs(rh));ctx.setLineDash([]);
+
+  ctx.fillStyle='#fbbf24';ctx.font='bold 14px sans-serif';
+  ctx.fillText(`x·y = ${xp.toFixed(1)} × ${yp.toFixed(1)} = ${k}`,tx(xp/2),ty(yp)-18);
+
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 17px sans-serif';
+  ctx.fillText(`y = ${k} / x`,20,30);
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+  ctx.fillText(`k(${k>0?'正':'负'}) → 图像在${k>0?'一三':'二四'}象限`,20,52);
+  ctx.fillText('✨ 黄点留痕迹，黄色矩形面积始终=|k|',20,76);
+  ctx.fillText('✨ 曲线上任一点满足 x·y = k（定值）',20,98);
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  if(currentModel==='linear')renderLinear();
+  else if(currentModel==='quadratic')renderQuadratic();
+  else renderInverse();
+}
+
+function buildSidebar(){
+  let html=`<a href="index.html" class="back-link">← 返回首页</a>`;
+  html+=`<div style="display:flex;gap:8px;flex-direction:column">
+    <button class="tab-btn ${currentModel==='linear'?'active':''}" data-m="linear">📈 一次函数 · 动点+斜率</button>
+    <button class="tab-btn ${currentModel==='quadratic'?'active':''}" data-m="quadratic">📉 二次函数 · 对称跳动</button>
+    <button class="tab-btn ${currentModel==='inverse'?'active':''}" data-m="inverse">〰️ 反比例 · 定值演示</button>
+  </div>`;
+
+  html+=`<div class="control-group"><h3>⚡ 动画速度</h3>
+    <input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="speedS">
+    <span style="font-size:.75em;color:#64748b">当前: <span class="vd" id="speedV">${speed.toFixed(1)}x</span></span>
+  </div>`;
+
+  if(currentModel==='linear'){
+    html+=`<div class="control-group"><h3>📐 参数调整</h3>
+      <label>斜率 k <span class="vd" id="kv">${params.k.toFixed(1)}</span></label><input type="range" min="-4" max="4" step="0.1" value="${params.k}" id="ks">
+      <label>截距 b <span class="vd" id="bv">${params.b.toFixed(1)}</span></label><input type="range" min="-4" max="4" step="0.1" value="${params.b}" id="bs">
+    </div>`;
+    html+=`<div class="info-box"><b>👀 观察要点：</b><br>🟡 黄点沿直线来回运动，<span class="hl">留下金色轨迹</span><br>📐 橙色三角形随动点移动<br>🔑 无论P在何处，<span class="hl">Δy/Δx始终=k</span></div>`;
+  }else if(currentModel==='quadratic'){
+    html+=`<div class="control-group"><h3>📐 参数调整</h3>
+      <label>a（开口方向/大小） <span class="vd" id="av">${params.a.toFixed(1)}</span></label><input type="range" min="-3" max="3" step="0.1" value="${params.a}" id="as">
+      <label>b <span class="vd" id="Bv">${params.B.toFixed(1)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${params.B}" id="Bs">
+      <label>c（y轴截距） <span class="vd" id="cv">${params.c.toFixed(1)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${params.c}" id="cs">
+    </div>`;
+    html+=`<div class="info-box"><b>👀 观察要点：</b><br>🟡 两个黄点<span class="hl">关于对称轴对称</span>，同步跳动<br>🔮 对称轴在脉动发光<br>🔑 对称点到对称轴<span class="hl">距离始终相等</span><br>📌 顶点是最高/最低点</div>`;
+  }else{
+    html+=`<div class="control-group"><h3>📐 参数调整</h3>
+      <label>比例系数 k <span class="vd" id="Kv">${params.K.toFixed(1)}</span></label><input type="range" min="-6" max="6" step="0.1" value="${params.K}" id="Ks">
+    </div>`;
+    html+=`<div class="info-box"><b>👀 观察要点：</b><br>🟡 黄点沿曲线运动，<span class="hl">留下轨迹</span><br>📦 黄色矩形面积<span class="hl">始终等于|k|</span><br>🔑 无论P在何处，<span class="hl">x·y=k（定值）</span><br>📌 x轴和y轴是渐近线</div>`;
+  }
+  sidebar.innerHTML=html;
+  // Events
+  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{
+    currentModel=b.dataset.m;trails.length=0;buildSidebar();render();
+  }));
+  document.getElementById('speedS').addEventListener('input',e=>{
+    speed=+e.target.value;document.getElementById('speedV').textContent=speed.toFixed(1);
+  });
+  if(currentModel==='linear'){
+    document.getElementById('ks').addEventListener('input',e=>{params.k=+e.target.value;document.getElementById('kv').textContent=params.k.toFixed(1);trails.length=0;render()});
+    document.getElementById('bs').addEventListener('input',e=>{params.b=+e.target.value;document.getElementById('bv').textContent=params.b.toFixed(1);trails.length=0;render()});
+  }else if(currentModel==='quadratic'){
+    document.getElementById('as').addEventListener('input',e=>{params.a=+e.target.value;document.getElementById('av').textContent=params.a.toFixed(1);trails.length=0;render()});
+    document.getElementById('Bs').addEventListener('input',e=>{params.B=+e.target.value;document.getElementById('Bv').textContent=params.B.toFixed(1);trails.length=0;render()});
+    document.getElementById('cs').addEventListener('input',e=>{params.c=+e.target.value;document.getElementById('cv').textContent=params.c.toFixed(1);trails.length=0;render()});
+  }else{
+    document.getElementById('Ks').addEventListener('input',e=>{params.K=+e.target.value;document.getElementById('Kv').textContent=params.K.toFixed(1);trails.length=0;render()});
+  }
+}
+
+function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}
+buildSidebar();render();requestAnimationFrame(animate);
+</script>
+</body>
+</html>
