@@ -183,40 +183,35 @@ function buildUI(){
     <button class="tab-btn ${currentModel==='quadratic'?'active':''}" data-m="quadratic">📉 二次函数 · 对称跳动</button>
     <button class="tab-btn ${currentModel==='inverse'?'active':''}" data-m="inverse">〰️ 反比例 · 定值演示</button>
   </div>`;
-  sidetml+=`<div class="ctrl"><h3>⚡ 动画速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="speedS"><span style="font-size:.72em;color:#64748b"><span class="vd" id="speedV">${speed.toFixed(1)}x</span></span></div>`;
+  sidetml+=`<div class="ctrl"><h3>⚡ 动画速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" class="speed-slider"><span style="font-size:.72em;color:#64748b"><span class="vd speed-val">${speed.toFixed(1)}x</span></span></div>`;
   if(currentModel==='linear'){
-    sidetml+=`<div class="ctrl"><h3>📐 参数</h3><label>k <span class="vd" id="kv">${params.k.toFixed(1)}</span></label><input type="range" min="-4" max="4" step="0.1" value="${params.k}" id="ks"><label>b <span class="vd" id="bv">${params.b.toFixed(1)}</span></label><input type="range" min="-4" max="4" step="0.1" value="${params.b}" id="bs"></div>`;
+    sidetml+=`<div class="ctrl"><h3>📐 参数</h3><label>k <span class="vd param-val" data-p="k">${params.k.toFixed(1)}</span></label><input type="range" min="-4" max="4" step="0.1" value="${params.k}" class="param-slider" data-p="k"><label>b <span class="vd param-val" data-p="b">${params.b.toFixed(1)}</span></label><input type="range" min="-4" max="4" step="0.1" value="${params.b}" class="param-slider" data-p="b"></div>`;
     sidetml+=`<div class="info-box"><b>👀 观察</b><br>🟡 黄点沿直线<span class="hl">留金色轨迹</span><br>📐 橙色△随动点移动<br>🔑 <span class="hl">Δy/Δx始终=k</span></div>`;
   }else if(currentModel==='quadratic'){
-    sidetml+=`<div class="ctrl"><h3>📐 参数</h3><label>a <span class="vd" id="av">${params.a.toFixed(1)}</span></label><input type="range" min="-3" max="3" step="0.1" value="${params.a}" id="as"><label>b <span class="vd" id="Bv">${params.B.toFixed(1)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${params.B}" id="Bs"><label>c <span class="vd" id="cv">${params.c.toFixed(1)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${params.c}" id="cs"></div>`;
+    sidetml+=`<div class="ctrl"><h3>📐 参数</h3><label>a <span class="vd param-val" data-p="a">${params.a.toFixed(1)}</span></label><input type="range" min="-3" max="3" step="0.1" value="${params.a}" class="param-slider" data-p="a"><label>b <span class="vd param-val" data-p="B">${params.B.toFixed(1)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${params.B}" class="param-slider" data-p="B"><label>c <span class="vd param-val" data-p="c">${params.c.toFixed(1)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${params.c}" class="param-slider" data-p="c"></div>`;
     sidetml+=`<div class="info-box"><b>👀 观察</b><br>🟡 两黄点<span class="hl">关于对称轴对称</span><br>🔮 对称轴脉动发光<br>📌 顶点是最高/最低点</div>`;
   }else{
-    sidetml+=`<div class="ctrl"><h3>📐 参数</h3><label>k <span class="vd" id="Kv">${params.K.toFixed(1)}</span></label><input type="range" min="-6" max="6" step="0.1" value="${params.K}" id="Ks"></div>`;
+    sidetml+=`<div class="ctrl"><h3>📐 参数</h3><label>k <span class="vd param-val" data-p="K">${params.K.toFixed(1)}</span></label><input type="range" min="-6" max="6" step="0.1" value="${params.K}" class="param-slider" data-p="K"></div>`;
     sidetml+=`<div class="info-box"><b>👀 观察</b><br>🟡 黄点沿曲线<span class="hl">留轨迹</span><br>📦 矩形面积<span class="hl">始终=|k|</span><br>📌 x·y=k（定值）</div>`;
   }
   document.getElementById('sidebar').innerHTML=sidetml;
-  // Mobile tabs
   let mt='';
   ['linear','quadratic','inverse'].forEach(m=>{mt+=`<button class="tab-btn ${currentModel===m?'active':''}" data-m="${m}">${m==='linear'?'📈 一次':m==='quadratic'?'📉 二次':'〰️ 反比例'}</button>`});
   document.getElementById('mobileTabs').innerHTML=mt;
-  // Mobile panel: same controls as sidebar
   document.getElementById('mobilePanel').innerHTML=sidetml;
 
-  function bindEvents(){
-    document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
-    document.getElementById('speedS').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('speedV').textContent=speed.toFixed(1)});
-    if(currentModel==='linear'){
-      document.getElementById('ks').addEventListener('input',e=>{params.k=+e.target.value;document.getElementById('kv').textContent=params.k.toFixed(1);trails.length=0});
-      document.getElementById('bs').addEventListener('input',e=>{params.b=+e.target.value;document.getElementById('bv').textContent=params.b.toFixed(1);trails.length=0});
-    }else if(currentModel==='quadratic'){
-      document.getElementById('as').addEventListener('input',e=>{params.a=+e.target.value;document.getElementById('av').textContent=params.a.toFixed(1);trails.length=0});
-      document.getElementById('Bs').addEventListener('input',e=>{params.B=+e.target.value;document.getElementById('Bv').textContent=params.B.toFixed(1);trails.length=0});
-      document.getElementById('cs').addEventListener('input',e=>{params.c=+e.target.value;document.getElementById('cv').textContent=params.c.toFixed(1);trails.length=0});
-    }else{
-      document.getElementById('Ks').addEventListener('input',e=>{params.K=+e.target.value;document.getElementById('Kv').textContent=params.K.toFixed(1);trails.length=0});
-    }
-  }
-  bindEvents();
+  // class-based events: works for both sidebar AND mobile panel
+  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
+  document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{
+    speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1));
+  }));
+  document.querySelectorAll('.param-slider').forEach(sl=>sl.addEventListener('input',e=>{
+    let p=e.target.dataset.p,v=+e.target.value;
+    if(p==='k')params.k=v;else if(p==='b')params.b=v;else if(p==='a')params.a=v;else if(p==='B')params.B=v;else if(p==='c')params.c=v;else if(p==='K')params.K=v;
+    document.querySelectorAll(`.param-slider[data-p="${p}"]`).forEach(s=>s.value=v);
+    document.querySelectorAll(`.param-val[data-p="${p}"]`).forEach(s=>s.textContent=v.toFixed(1));
+    trails.length=0;
+  }));
 }
 
 resizeCanvas();buildUI();render();

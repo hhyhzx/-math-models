@@ -109,14 +109,14 @@ function buildUI(){
   let models=[{id:'vertical',n:'📏 垂径定理',sn:'垂径'},{id:'inscribed',n:'📐 圆周角定理',sn:'圆周角'},{id:'tangent',n:'📌 切线性质',sn:'切线'},{id:'power',n:'🔗 圆幂定理',sn:'圆幂'}];
   let st='<a href="index.html" class="back-link">← 返回首页</a><div style="display:flex;flex-direction:column;gap:4px">';
   models.forEach(m=>{st+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.n}</button>`});
-  st+=`</div><div class="ctrl"><h3>⚡ 速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="ss"><span style="font-size:.72em;color:#64748b"><span class="vd" id="sv">${speed.toFixed(1)}x</span></span></div>`;
+  st+=`</div><div class="ctrl"><h3>⚡ 速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" class="speed-slider"><span style="font-size:.72em;color:#64748b"><span class="vd" class="vd speed-val">${speed.toFixed(1)}x</span></span></div>`;
   let infos={vertical:'<b>垂径定理</b><br>⊥弦的直径<span class="hl">平分弦</span><br>知二推三',inscribed:'<b>圆周角定理</b><br><span class="hl">同弧圆周角=圆心角/2</span><br>P任意位置∠不变',tangent:'<b>切线性质</b><br>半径⊥切线<br><span class="hl">切线长相等</span>',power:'<b>圆幂定理</b><br>两弦交于P<br><span class="hl">PA·PC=PB·PD</span>'};
   st+=`<div class="info-box">${infos[currentModel]}</div>`;
   document.getElementById('sidebar').innerHTML=st;
   let mt='';models.forEach(m=>{mt+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.sn}</button>`});
   document.getElementById('mobileTabs').innerHTML=mt;document.getElementById('mobilePanel').innerHTML=st;
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
-  document.getElementById('ss').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('sv').textContent=speed.toFixed(1)});
+  document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1))}));
 }
 resizeCanvas();buildUI();render();
 function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);

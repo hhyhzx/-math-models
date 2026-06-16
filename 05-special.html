@@ -101,14 +101,14 @@ function buildUI(){
   let models=[{id:'halfangle',n:'🔷 半角模型',sn:'半角'},{id:'guadou',n:'🫘 瓜豆原理',sn:'瓜豆'},{id:'rotation',n:'🔄 手拉手旋转',sn:'旋转'}];
   let st='<a href="index.html" class="back-link">← 返回首页</a><div style="display:flex;flex-direction:column;gap:4px">';
   models.forEach(m=>{st+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.n}</button>`});
-  st+=`</div><div class="ctrl"><h3>⚡ 速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="ss"><span style="font-size:.72em;color:#64748b"><span class="vd" id="sv">${speed.toFixed(1)}x</span></span></div>`;
+  st+=`</div><div class="ctrl"><h3>⚡ 速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" class="speed-slider"><span style="font-size:.72em;color:#64748b"><span class="vd" class="vd speed-val">${speed.toFixed(1)}x</span></span></div>`;
   let infos={halfangle:'<b>半角模型</b><br>∠EAF=45°→旋转90°<br><span class="hl">EF=BE+DF</span>',guadou:'<b>瓜豆原理</b><br>主动点轨迹→从动点轨迹<br><span class="hl">形状相同</span>',rotation:'<b>旋转全等</b><br>共顶点等腰△旋转<br><span class="hl">对应边相等</span>'};
   st+=`<div class="info-box">${infos[currentModel]}</div>`;
   document.getElementById('sidebar').innerHTML=st;
   let mt='';models.forEach(m=>{mt+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.sn}</button>`});
   document.getElementById('mobileTabs').innerHTML=mt;document.getElementById('mobilePanel').innerHTML=st;
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
-  document.getElementById('ss').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('sv').textContent=speed.toFixed(1)});
+  document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1))}));
 }
 resizeCanvas();buildUI();render();
 function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);

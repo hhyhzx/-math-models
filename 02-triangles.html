@@ -119,14 +119,14 @@ function buildUI(){
   let models=[{id:'handshake',n:'🤝 手拉手',sn:'手拉手'},{id:'threeline',n:'📏 一线三等角',sn:'一线三等角'},{id:'ashape',n:'🔺 A字型相似',sn:'A字相似'},{id:'xshape',n:'✖ X字型相似',sn:'X字相似'},{id:'midline',n:'📐 倍长中线',sn:'倍长中线'}];
   let st='<a href="index.html" class="back-link">← 返回首页</a><div style="display:flex;flex-direction:column;gap:4px">';
   models.forEach(m=>{st+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.n}</button>`});
-  st+=`</div><div class="ctrl"><h3>⚡ 动画速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="ss"><span style="font-size:.72em;color:#64748b"><span class="vd" id="sv">${speed.toFixed(1)}x</span></span></div>`;
+  st+=`</div><div class="ctrl"><h3>⚡ 动画速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" class="speed-slider"><span style="font-size:.72em;color:#64748b"><span class="vd" class="vd speed-val">${speed.toFixed(1)}x</span></span></div>`;
   let infos={handshake:'两个共顶点△→<span class="hl">旋转全等</span><br>🖱 桌面端可拖动',threeline:'直线上3个等角→<span class="hl">两组相似△</span>',ashape:'平行截线→<span class="hl">△ADE∽△ABC</span>',xshape:'交叉线段→<span class="hl">对顶角相似</span>',midline:'中线延长→<span class="hl">平行四边形</span>'};
   st+=`<div class="info-box"><b>${models.find(m=>m.id===currentModel).n}</b><br>${infos[currentModel]}</div>`;
   document.getElementById('sidebar').innerHTML=st;
   let mt='';models.forEach(m=>{mt+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.sn}</button>`});
   document.getElementById('mobileTabs').innerHTML=mt;document.getElementById('mobilePanel').innerHTML=st;
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
-  document.getElementById('ss').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('sv').textContent=speed.toFixed(1)});
+  document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1))}));
 }
 resizeCanvas();buildUI();render();
 function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);

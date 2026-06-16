@@ -109,14 +109,14 @@ function buildUI(){
   let models=[{id:'general',n:'🐴 将军饮马',sn:'将军饮马'},{id:'hubugui',n:'🏃 胡不归',sn:'胡不归'},{id:'apollonius',n:'⭕ 阿波罗尼斯圆',sn:'阿氏圆'},{id:'fermat',n:'📍 费马点',sn:'费马点'}];
   let st='<a href="index.html" class="back-link">← 返回首页</a><div style="display:flex;flex-direction:column;gap:4px">';
   models.forEach(m=>{st+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.n}</button>`});
-  st+=`</div><div class="ctrl"><h3>⚡ 速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="ss"><span style="font-size:.72em;color:#64748b"><span class="vd" id="sv">${speed.toFixed(1)}x</span></span></div>`;
+  st+=`</div><div class="ctrl"><h3>⚡ 速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" class="speed-slider"><span style="font-size:.72em;color:#64748b"><span class="vd" class="vd speed-val">${speed.toFixed(1)}x</span></span></div>`;
   let infos={general:'<b>将军饮马</b><br>A→河l→B最短路径<br>作<span class="hl">对称点</span>，化折为直',hubugui:'<b>胡不归</b><br>不同速度的最短时间<br>sinα=<span class="hl">v₂/v₁</span>',apollonius:'<b>阿波罗尼斯圆</b><br><span class="hl">PA/PB=k</span>的轨迹是圆<br>比值始终不变',fermat:'<b>费马点</b><br>到三顶点<span class="hl">距离和最小</span><br>三线夹角=120°'};
   st+=`<div class="info-box">${infos[currentModel]}</div>`;
   document.getElementById('sidebar').innerHTML=st;
   let mt='';models.forEach(m=>{mt+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.sn}</button>`});
   document.getElementById('mobileTabs').innerHTML=mt;document.getElementById('mobilePanel').innerHTML=st;
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
-  document.getElementById('ss').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('sv').textContent=speed.toFixed(1)});
+  document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1))}));
 }
 resizeCanvas();buildUI();render();
 function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);
