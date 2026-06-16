@@ -30,14 +30,22 @@ canvas{display:block;max-width:100%;max-height:100%;border-radius:6px}
   .panel-toggle{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px;background:#1a2332;color:#94a3b8;border:none;width:100%;font-size:.78em;cursor:pointer;order:4;flex-shrink:0}
 }
 @media(min-width:769px){.panel-toggle{display:none}}
+.canvas-wrap{cursor:pointer;position:relative}
+.canvas-hint{position:absolute;bottom:8px;right:14px;color:rgba(255,255,255,0.28);font-size:11px;pointer-events:none}
+#fullscreen-overlay{position:fixed;inset:0;background:rgba(5,8,18,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity .35s,visibility 0s .35s}
+#fullscreen-overlay.active{visibility:visible;opacity:1;transition:opacity .35s,visibility 0s 0s}
+.fs-close-btn{position:fixed;top:16px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:24px;cursor:pointer;z-index:10001;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:background .2s;line-height:1}
+.fs-close-btn:hover{background:rgba(255,255,255,0.18)}
+.fs-canvas-container{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:clamp(50px,8vh,80px) clamp(16px,4vw,40px);box-sizing:border-box}
 </style>
 </head>
 <body>
 <div class="sidebar" id="sidebar"></div>
-<div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div class="canvas-wrap"><canvas id="canvas"></canvas><span class="canvas-hint">点击放大</span></div>
 <div class="mobile-tabs" id="mobileTabs"></div>
 <div class="mobile-panel" id="mobilePanel"></div>
 <button class="panel-toggle" id="panelToggle" onclick="togglePanel()">⚙ 速度控制</button>
+<div id="fullscreen-overlay"><button class="fs-close-btn">✕</button><div class="fs-canvas-container"></div></div>
 
 <script>
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
@@ -65,8 +73,8 @@ function renderGeneral(){
   dp(Popt.x,Popt.y,6,'#f472b6','最优P');dp(A.x,A.y,6,'#60a5fa','A');dp(B.x,B.y,5,'#f472b6','B');dp(P.x,P.y,7,nearOpt?'#34d399':'#fbbf24','P',!nearOpt);
   let gX=30,gY=455,gW=220,gH=20,maxD=Math.hypot(A.x-30,A.y-RIVER_Y)+Math.hypot(30-B.x,RIVER_Y-B.y),ratio=Math.max(0,Math.min(1,(total-dOpt)/Math.max(maxD-dOpt,1)));
   ctx.fillStyle='#1e293b';ctx.fillRect(gX,gY,gW,gH);let grad=ctx.createLinearGradient(gX,0,gX+gW,0);grad.addColorStop(0,'#34d399');grad.addColorStop(1,'#ef4444');ctx.fillStyle=grad;ctx.fillRect(gX,gY,gW*ratio,gH);ctx.strokeStyle='#475569';ctx.strokeRect(gX,gY,gW,gH);
-  ctx.fillStyle='#e2e8f0';ctx.font='12px sans-serif';ctx.fillText(`AP+PB=${total.toFixed(0)}(最短=${dOpt.toFixed(0)})`,gX,gY-6);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('将军饮马',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('A→河l→B,对称法求最短',20,44);
+  ctx.fillStyle='#e2e8f0';ctx.font='14px sans-serif';ctx.fillText(`AP+PB=${total.toFixed(0)}(最短=${dOpt.toFixed(0)})`,gX,gY-6);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('将军饮马',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('A→河l→B,对称法求最短',20,44);
 }
 
 function renderHubugui(){
@@ -76,7 +84,7 @@ function renderHubugui(){
   dl(A.x,A.y,P.x,P.y,'#fbbf24',3);dl(P.x,P.y,B.x,B.y,'#60a5fa',3);dl(A.x,A.y,B.x,B.y,'#334155',1,true);
   let dr=Math.hypot(A.x-P.x,A.y-P.y),dof=Math.hypot(P.x-B.x,P.y-B.y),tn=dr/2+dof;
   dp(A.x,A.y,5,'#f8fafc','A');dp(B.x,B.y,5,'#f472b6','B');dp(P.x,P.y,7,'#fbbf24','P',true);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('胡不归',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`总时间≈${tn.toFixed(1)}s`,20,44);ctx.fillText('sinα=v₂/v₁=0.5→α=30°',20,60);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('胡不归',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`总时间≈${tn.toFixed(1)}s`,20,44);ctx.fillText('sinα=v₂/v₁=0.5→α=30°',20,60);
 }
 
 function renderApollonius(){
@@ -86,7 +94,7 @@ function renderApollonius(){
   dl(A.x,A.y,B.x,B.y,'#475569',1,true);dl(A.x,A.y,P.x,P.y,'#60a5fa',2.5);dl(B.x,B.y,P.x,P.y,'#f472b6',2.5);
   let pa=Math.hypot(A.x-P.x,A.y-P.y),pb=Math.hypot(B.x-P.x,B.y-P.y),ratio=pa/pb;
   dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#f472b6','B');dp(P.x,P.y,7,Math.abs(ratio-k)<0.05?'#34d399':'#fbbf24','P',true);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('阿波罗尼斯圆',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`PA/PB=${ratio.toFixed(2)}≈${k}`,20,44);ctx.fillText('✨ 比值始终不变',20,60);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('阿波罗尼斯圆',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`PA/PB=${ratio.toFixed(2)}≈${k}`,20,44);ctx.fillText('✨ 比值始终不变',20,60);
 }
 
 function renderFermat(){
@@ -100,7 +108,7 @@ function renderFermat(){
   for(let i=0;i<3;i++){let v1=[A,B,C][i],v2=[A,B,C][(i+1)%3],a1=Math.atan2(v1.y-F.y,v1.x-F.x),a2=Math.atan2(v2.y-F.y,v2.x-F.x);ctx.beginPath();ctx.arc(F.x,F.y,32,a1,a2);ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke()}
   let tl=Math.hypot(F.x-A.x,F.y-A.y)+Math.hypot(F.x-B.x,F.y-B.y)+Math.hypot(F.x-C.x,F.y-C.y);
   dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#60a5fa','B');dp(C.x,C.y,5,'#60a5fa','C');dp(F.x,F.y,8,'#f472b6','F',true);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('费马点',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`FA+FB+FC≈${tl.toFixed(0)}`,20,44);ctx.fillText('三线夹角=120°',20,60);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('费马点',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`FA+FB+FC≈${tl.toFixed(0)}`,20,44);ctx.fillText('三线夹角=120°',20,60);
 }
 
 function render(){ctx.setTransform(sX,0,0,sY,0,0);switch(currentModel){case'general':renderGeneral();break;case'hubugui':renderHubugui();break;case'apollonius':renderApollonius();break;case'fermat':renderFermat();break}}
@@ -118,6 +126,14 @@ function buildUI(){
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
   document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1))}));
 }
+const overlay=document.getElementById('fullscreen-overlay'),fsContainer=overlay.querySelector('.fs-canvas-container'),canvasWrap=document.querySelector('.canvas-wrap');let isFullscreen=false;
+function enterFS(){if(isFullscreen)return;isFullscreen=true;fsContainer.appendChild(canvas);overlay.classList.add('active');resizeCanvas();trails.length=0}
+function exitFS(){if(!isFullscreen)return;isFullscreen=false;canvasWrap.appendChild(canvas);overlay.classList.remove('active');resizeCanvas();trails.length=0}
+canvas.addEventListener('pointerdown',()=>enterFS());
+canvasWrap.querySelector('.canvas-hint').addEventListener('pointerdown',e=>{e.stopPropagation();enterFS()});
+document.querySelector('.fs-close-btn').addEventListener('pointerdown',e=>{e.stopPropagation();exitFS()});
+overlay.addEventListener('pointerdown',e=>{if(e.target===overlay)exitFS()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')exitFS()});
 resizeCanvas();buildUI();render();
 function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);
 </script>

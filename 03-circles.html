@@ -30,14 +30,22 @@ canvas{display:block;max-width:100%;max-height:100%;border-radius:6px}
   .panel-toggle{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px;background:#1a2332;color:#94a3b8;border:none;width:100%;font-size:.78em;cursor:pointer;order:4;flex-shrink:0}
 }
 @media(min-width:769px){.panel-toggle{display:none}}
+.canvas-wrap{cursor:pointer;position:relative}
+.canvas-hint{position:absolute;bottom:8px;right:14px;color:rgba(255,255,255,0.28);font-size:11px;pointer-events:none}
+#fullscreen-overlay{position:fixed;inset:0;background:rgba(5,8,18,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity .35s,visibility 0s .35s}
+#fullscreen-overlay.active{visibility:visible;opacity:1;transition:opacity .35s,visibility 0s 0s}
+.fs-close-btn{position:fixed;top:16px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:24px;cursor:pointer;z-index:10001;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:background .2s;line-height:1}
+.fs-close-btn:hover{background:rgba(255,255,255,0.18)}
+.fs-canvas-container{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:clamp(50px,8vh,80px) clamp(16px,4vw,40px);box-sizing:border-box}
 </style>
 </head>
 <body>
 <div class="sidebar" id="sidebar"></div>
-<div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div class="canvas-wrap"><canvas id="canvas"></canvas><span class="canvas-hint">点击放大</span></div>
 <div class="mobile-tabs" id="mobileTabs"></div>
 <div class="mobile-panel" id="mobilePanel"></div>
 <button class="panel-toggle" id="panelToggle" onclick="togglePanel()">⚙ 速度控制</button>
+<div id="fullscreen-overlay"><button class="fs-close-btn">✕</button><div class="fs-canvas-container"></div></div>
 
 <script>
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
@@ -51,7 +59,7 @@ window.addEventListener('resize',()=>{resizeCanvas();trails.length=0});
 function addTrail(x,y){trails.push({x,y,life:1});if(trails.length>40)trails.shift()}
 function drawTrails(){for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.5})`;ctx.fill();t.life-=0.03}for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1)}
 function glowPt(x,y,r,color){for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(x,y,r+i*5,0,Math.PI*2);ctx.fillStyle=color.replace('1',(0.1-i*0.02).toString());ctx.fill()}}
-function dp(x,y,r,color,label,glow=false){if(glow)glowPt(x,y,r,color);ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();if(label){ctx.fillStyle='#f1f5f9';ctx.font='bold 13px sans-serif';ctx.fillText(label,x+10,y-10)}}
+function dp(x,y,r,color,label,glow=false){if(glow)glowPt(x,y,r,color);ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();if(label){ctx.fillStyle='#f1f5f9';ctx.font='bold 14px sans-serif';ctx.fillText(label,x+10,y-10)}}
 function dl(x1,y1,x2,y2,color,width=2,dashed=false){if(dashed)ctx.setLineDash([8,5]);else ctx.setLineDash([]);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([])}
 function dCircle(color,lw){ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke()}
 
@@ -63,7 +71,7 @@ function renderVertical(){
   dl(Rm.x,Rm.y,Rf.x,Rf.y,'#f472b6',2.5);dl(CX,CY,M.x,M.y,'#fbbf24',2.5,true);
   let s=16,perp=rA+Math.PI/2;ctx.beginPath();ctx.moveTo(M.x+s*Math.cos(cA),M.y+s*Math.sin(cA));ctx.lineTo(M.x+s*Math.cos(cA)+s*Math.cos(rA),M.y+s*Math.sin(cA)+s*Math.sin(rA));ctx.lineTo(M.x+s*Math.cos(rA),M.y+s*Math.sin(rA));ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke();
   let hc=Math.hypot(A.x-M.x,A.y-M.y);dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#60a5fa','B');dp(M.x,M.y,5,'#f472b6','M',true);dp(CX,CY,4,'#f8fafc','O');
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('垂径定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`AM=MB=${hc.toFixed(0)}px`,20,46);ctx.fillText('直径⊥弦→平分弦',20,62);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('垂径定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`AM=MB=${hc.toFixed(0)}px`,20,46);ctx.fillText('直径⊥弦→平分弦',20,62);
 }
 
 function renderInscribed(){
@@ -76,7 +84,7 @@ function renderInscribed(){
   ctx.beginPath();ctx.arc(P.x,P.y,32,Math.atan2(A.y-P.y,A.x-P.x),Math.atan2(B.y-P.y,B.x-P.x));ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;ctx.stroke();
   dl(A.x,A.y,B.x,B.y,'#f8fafc',1.5,true);let ia=cd/2;
   dp(A.x,A.y,5,'#f8fafc','A');dp(B.x,B.y,5,'#f8fafc','B');dp(P.x,P.y,7,'#fbbf24','P',true);dp(CX,CY,4,'#f8fafc','O');
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('圆周角定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`圆心角≈${cd.toFixed(1)}°`,20,48);ctx.fillText(`圆周角≈${ia.toFixed(1)}°`,20,64);ctx.fillStyle='#fbbf24';ctx.font='bold 13px sans-serif';ctx.fillText('✨ 圆周角=圆心角/2',20,84);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('圆周角定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`圆心角≈${cd.toFixed(1)}°`,20,48);ctx.fillText(`圆周角≈${ia.toFixed(1)}°`,20,64);ctx.fillStyle='#fbbf24';ctx.font='bold 14px sans-serif';ctx.fillText('✨ 圆周角=圆心角/2',20,84);
 }
 
 function renderTangent(){
@@ -88,7 +96,7 @@ function renderTangent(){
   let d=Math.hypot(P.x-CX,P.y-CY),alpha=Math.acos(R/d),base=Math.atan2(CY-P.y,CX-P.x),T2a=base+alpha+Math.PI,T2={x:CX+R*Math.cos(T2a),y:CY+R*Math.sin(T2a)};
   dl(P.x,P.y,T.x,T.y,'#34d399',2.5);dl(P.x,P.y,T2.x,T2.y,'#34d399',2.5);dl(P.x,P.y,CX,CY,'#475569',1,true);
   dp(T.x,T.y,5,'#60a5fa','T₁');dp(T2.x,T2.y,5,'#60a5fa','T₂');dp(P.x,P.y,6,'#fbbf24','P',true);dp(CX,CY,4,'#f8fafc','O');
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('切线性质',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('半径⊥切线,PT₁=PT₂',20,46);ctx.fillText('✨ 切线长定理',20,62);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('切线性质',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('半径⊥切线,PT₁=PT₂',20,46);ctx.fillText('✨ 切线长定理',20,62);
 }
 
 function renderPower(){
@@ -100,7 +108,7 @@ function renderPower(){
   let pa=Math.hypot(P.x-A.x,P.y-A.y),pc=Math.hypot(P.x-C.x,P.y-C.y),pb=Math.hypot(P.x-B.x,P.y-B.y),pd=Math.hypot(P.x-D.x,P.y-D.y);
   let p1=pa*pc,p2=pb*pd,match=Math.abs(p1-p2)<5;
   dp(A.x,A.y,4,'#60a5fa','A');dp(C.x,C.y,4,'#60a5fa','C');dp(B.x,B.y,4,'#f472b6','B');dp(D.x,D.y,4,'#f472b6','D');dp(P.x,P.y,6,'#fbbf24','P',true);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('圆幂定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`PA·PC=${p1.toFixed(0)}`,20,46);ctx.fillText(`PB·PD=${p2.toFixed(0)}`,20,62);ctx.fillStyle=match?'#34d399':'#fbbf24';ctx.font='bold 13px sans-serif';ctx.fillText(match?'✓ 乘积相等':'乘积≈相等',20,80);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('圆幂定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`PA·PC=${p1.toFixed(0)}`,20,46);ctx.fillText(`PB·PD=${p2.toFixed(0)}`,20,62);ctx.fillStyle=match?'#34d399':'#fbbf24';ctx.font='bold 14px sans-serif';ctx.fillText(match?'✓ 乘积相等':'乘积≈相等',20,80);
 }
 
 function render(){ctx.setTransform(sX,0,0,sY,0,0);switch(currentModel){case'vertical':renderVertical();break;case'inscribed':renderInscribed();break;case'tangent':renderTangent();break;case'power':renderPower();break}}
@@ -118,6 +126,14 @@ function buildUI(){
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
   document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1))}));
 }
+const overlay=document.getElementById('fullscreen-overlay'),fsContainer=overlay.querySelector('.fs-canvas-container'),canvasWrap=document.querySelector('.canvas-wrap');let isFullscreen=false;
+function enterFS(){if(isFullscreen)return;isFullscreen=true;fsContainer.appendChild(canvas);overlay.classList.add('active');resizeCanvas();trails.length=0}
+function exitFS(){if(!isFullscreen)return;isFullscreen=false;canvasWrap.appendChild(canvas);overlay.classList.remove('active');resizeCanvas();trails.length=0}
+canvas.addEventListener('pointerdown',()=>enterFS());
+canvasWrap.querySelector('.canvas-hint').addEventListener('pointerdown',e=>{e.stopPropagation();enterFS()});
+document.querySelector('.fs-close-btn').addEventListener('pointerdown',e=>{e.stopPropagation();exitFS()});
+overlay.addEventListener('pointerdown',e=>{if(e.target===overlay)exitFS()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')exitFS()});
 resizeCanvas();buildUI();render();
 function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);
 </script>

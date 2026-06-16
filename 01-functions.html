@@ -34,14 +34,22 @@ canvas{display:block;max-width:100%;max-height:100%;border-radius:6px}
   .mobile-panel.collapsed{max-height:0;padding:0;overflow:hidden}
   .panel-toggle{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px;background:#1a2332;color:#94a3b8;border:none;width:100%;font-size:.78em;cursor:pointer;order:4;flex-shrink:0}
 }
+.canvas-wrap{cursor:pointer;position:relative}
+.canvas-hint{position:absolute;bottom:8px;right:14px;color:rgba(255,255,255,0.28);font-size:11px;pointer-events:none}
+#fullscreen-overlay{position:fixed;inset:0;background:rgba(5,8,18,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity .35s,visibility 0s .35s}
+#fullscreen-overlay.active{visibility:visible;opacity:1;transition:opacity .35s,visibility 0s 0s}
+.fs-close-btn{position:fixed;top:16px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:24px;cursor:pointer;z-index:10001;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:background .2s;line-height:1}
+.fs-close-btn:hover{background:rgba(255,255,255,0.18)}
+.fs-canvas-container{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:clamp(50px,8vh,80px) clamp(16px,4vw,40px);box-sizing:border-box}
 </style>
 </head>
 <body>
 <div class="sidebar" id="sidebar"></div>
-<div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div class="canvas-wrap"><canvas id="canvas"></canvas><span class="canvas-hint">点击放大</span></div>
 <div class="mobile-tabs" id="mobileTabs"></div>
 <div class="mobile-panel" id="mobilePanel"></div>
 <button class="panel-toggle" id="panelToggle" onclick="togglePanel()">⚙ 参数控制</button>
+<div id="fullscreen-overlay"><button class="fs-close-btn">✕</button><div class="fs-canvas-container"></div></div>
 
 <script>
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
@@ -109,8 +117,8 @@ function renderLinear(){
   ctx.fillStyle='#f59e0b';ctx.font='bold 12px sans-serif';ctx.fillText('1',tx(xp+0.3),ty(yp)+20);ctx.fillText(`${k}`,tx(xp+1)+6,ty(yp+k/2)+4);
   if(k!==0)dot(-b/k,0,'#34d399',5,`(${(-b/k).toFixed(1)},0)`);
   dot(0,b,'#a78bfa',5,`(0,${b})`);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText(`y = ${k.toFixed(1)}x ${b>=0?'+':''}${b}`,20,30);
-  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`斜率k=${k} → ${k>0?'↗上升':'↘下降'}，|k|越大越陡`,20,48);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 20px sans-serif';ctx.fillText(`y = ${k.toFixed(1)}x ${b>=0?'+':''}${b}`,20,30);
+  ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`斜率k=${k} → ${k>0?'↗上升':'↘下降'}，|k|越大越陡`,20,48);
   ctx.fillText(`截距b=${b} → 与y轴交于(0,${b})`,20,65);
   ctx.fillText('✨ 黄点留痕迹，Δy/Δx始终=k',20,86);
 }
@@ -135,8 +143,8 @@ function renderQuadratic(){
   drawLine(px1,py1,px2,py2,'#fbbf24',1.5,true);
   glow(vx,vy,8,'#f472b6',1);dot(vx,vy,'#f472b6',8,`顶点(${vx.toFixed(1)},${vy.toFixed(1)})`);
   let disc=b*b-4*a*c;
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText(`y = ${a}x² ${b>=0?'+':''}${b}x ${c>=0?'+':''}${c}`,20,30);
-  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`a=${a}→开口${a>0?'向上':'向下'}，|a|越大越窄`,20,48);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 20px sans-serif';ctx.fillText(`y = ${a}x² ${b>=0?'+':''}${b}x ${c>=0?'+':''}${c}`,20,30);
+  ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`a=${a}→开口${a>0?'向上':'向下'}，|a|越大越窄`,20,48);
   if(disc>0.01){
     let r1=(-b-Math.sqrt(disc))/(2*a),r2=(-b+Math.sqrt(disc))/(2*a);
     dot(r1,0,'#34d399',6,`x₁=${r1.toFixed(1)}`);dot(r2,0,'#34d399',6,`x₂=${r2.toFixed(1)}`);
@@ -165,8 +173,8 @@ function renderInverse(){
   ctx.fillStyle=`rgba(251,191,36,${ra})`;ctx.fillRect(rx,Math.min(ry,ty(0)),rw,Math.abs(rh));
   ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.strokeRect(rx,Math.min(ry,ty(0)),rw,Math.abs(rh));ctx.setLineDash([]);
   ctx.fillStyle='#fbbf24';ctx.font='bold 14px sans-serif';ctx.fillText(`x·y=${xp.toFixed(1)}×${yp.toFixed(1)}=${k}`,tx(xp/2),ty(yp)-18);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText(`y = ${k} / x`,20,30);
-  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`k(${k>0?'正':'负'})→${k>0?'一三':'二四'}象限`,20,46);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 20px sans-serif';ctx.fillText(`y = ${k} / x`,20,30);
+  ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText(`k(${k>0?'正':'负'})→${k>0?'一三':'二四'}象限`,20,46);
   ctx.fillText('✨ 黄色矩形面积始终=|k|',20,62);
 }
 
@@ -213,6 +221,14 @@ function buildUI(){
   }));
 }
 
+const overlay=document.getElementById('fullscreen-overlay'),fsContainer=overlay.querySelector('.fs-canvas-container'),canvasWrap=document.querySelector('.canvas-wrap');let isFullscreen=false;
+function enterFS(){if(isFullscreen)return;isFullscreen=true;fsContainer.appendChild(canvas);overlay.classList.add('active');resizeCanvas();trails.length=0}
+function exitFS(){if(!isFullscreen)return;isFullscreen=false;canvasWrap.appendChild(canvas);overlay.classList.remove('active');resizeCanvas();trails.length=0}
+canvas.addEventListener('pointerdown',()=>enterFS());
+canvasWrap.querySelector('.canvas-hint').addEventListener('pointerdown',e=>{e.stopPropagation();enterFS()});
+document.querySelector('.fs-close-btn').addEventListener('pointerdown',e=>{e.stopPropagation();exitFS()});
+overlay.addEventListener('pointerdown',e=>{if(e.target===overlay)exitFS()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')exitFS()});
 resizeCanvas();buildUI();render();
 function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}
 requestAnimationFrame(animate);

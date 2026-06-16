@@ -32,14 +32,22 @@ canvas{display:block;max-width:100%;max-height:100%;border-radius:6px}
   .panel-toggle{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px;background:#1a2332;color:#94a3b8;border:none;width:100%;font-size:.78em;cursor:pointer;order:4;flex-shrink:0}
 }
 @media(min-width:769px){.panel-toggle{display:none}}
+.canvas-wrap{cursor:pointer;position:relative}
+.canvas-hint{position:absolute;bottom:8px;right:14px;color:rgba(255,255,255,0.28);font-size:11px;pointer-events:none}
+#fullscreen-overlay{position:fixed;inset:0;background:rgba(5,8,18,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:opacity .35s,visibility 0s .35s}
+#fullscreen-overlay.active{visibility:visible;opacity:1;transition:opacity .35s,visibility 0s 0s}
+.fs-close-btn{position:fixed;top:16px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:24px;cursor:pointer;z-index:10001;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:background .2s;line-height:1}
+.fs-close-btn:hover{background:rgba(255,255,255,0.18)}
+.fs-canvas-container{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:clamp(50px,8vh,80px) clamp(16px,4vw,40px);box-sizing:border-box}
 </style>
 </head>
 <body>
 <div class="sidebar" id="sidebar"></div>
-<div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div class="canvas-wrap"><canvas id="canvas"></canvas><span class="canvas-hint">点击放大</span></div>
 <div class="mobile-tabs" id="mobileTabs"></div>
 <div class="mobile-panel" id="mobilePanel"></div>
 <button class="panel-toggle" id="panelToggle" onclick="togglePanel()">⚙ 速度控制</button>
+<div id="fullscreen-overlay"><button class="fs-close-btn">✕</button><div class="fs-canvas-container"></div></div>
 
 <script>
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
@@ -71,17 +79,17 @@ function renderHandshake(){
   let dg=(rotAng*180/Math.PI).toFixed(1);ctx.fillStyle='#f8fafc';ctx.font='bold 13px sans-serif';ctx.fillText(`${dg}°`,O.x+50*Math.cos(baseAngle+rotAng/2),O.y+50*Math.sin(baseAngle+rotAng/2)-12);
   dp(O.x,O.y,6,'#f8fafc','O');dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#60a5fa','B');dp(A2.x,A2.y,6,'#f472b6',"A'",true);dp(B2.x,B2.y,5,'#f472b6',"B'");
   angArc(O,A,B,'#60a5fa',24);angArc(O,A2,B2,'#f472b6',24);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('手拉手模型',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('△OAB绕O旋转 → △OA\'B\'',20,46);ctx.fillText('→ △OAB ≅ △OA\'B\'（全等）',20,64);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('手拉手模型',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('△OAB绕O旋转 → △OA\'B\'',20,46);ctx.fillText('→ △OAB ≅ △OA\'B\'（全等）',20,64);
 }
 
 function renderThreeLine(){
   ctx.clearRect(0,0,DESIGN_W,DESIGN_H);let baseY=420;dl(30,baseY,DESIGN_W-30,baseY,'#475569',3);
   let pos=[150,340,530],angs=[],lens=[170,210,150],tops=[],bases=[];
-  for(let i=0;i<3;i++){angs[i]=62+Math.sin(time*0.7*speed+i*1.3)*15;let rad=angs[i]*Math.PI/180,p={x:pos[i],y:baseY};bases.push(p);let top={x:p.x-Math.cos(rad)*lens[i],y:p.y-Math.sin(rad)*lens[i]};tops.push(top);dl(p.x,p.y,top.x,top.y,i===1?'#f472b6':'#60a5fa',3.5);angArc(p,{x:p.x+40,y:p.y},top,'#fbbf24',22);ctx.fillStyle='#fbbf24';ctx.font='11px sans-serif';ctx.fillText(`${angs[i].toFixed(0)}°`,p.x+15,p.y-14)}
+  for(let i=0;i<3;i++){angs[i]=62+Math.sin(time*0.7*speed+i*1.3)*15;let rad=angs[i]*Math.PI/180,p={x:pos[i],y:baseY};bases.push(p);let top={x:p.x-Math.cos(rad)*lens[i],y:p.y-Math.sin(rad)*lens[i]};tops.push(top);dl(p.x,p.y,top.x,top.y,i===1?'#f472b6':'#60a5fa',3.5);angArc(p,{x:p.x+40,y:p.y},top,'#fbbf24',22);ctx.fillStyle='#fbbf24';ctx.font='13px sans-serif';ctx.fillText(`${angs[i].toFixed(0)}°`,p.x+15,p.y-14)}
   dl(tops[0].x,tops[0].y,tops[1].x,tops[1].y,'#f472b6',2,true);dl(tops[1].x,tops[1].y,tops[2].x,tops[2].y,'#f472b6',2,true);dl(tops[0].x,tops[0].y,tops[2].x,tops[2].y,'#34d399',2,true);
   fillTri(tops[0],bases[0],tops[1],'rgba(96,165,250,0.08)');fillTri(tops[1],bases[1],tops[2],'rgba(244,114,182,0.08)');
   for(let i=0;i<3;i++){dp(bases[i].x,bases[i].y,5,'#f8fafc','P'+(i+1));dp(tops[i].x,tops[i].y,5,i===1?'#f472b6':'#60a5fa','Q'+(i+1))}
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('一线三等角',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('直线上3个等角→两组相似△',20,46);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('一线三等角',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('直线上3个等角→两组相似△',20,46);
 }
 
 function renderAShape(){
@@ -90,7 +98,7 @@ function renderAShape(){
   let t=0.22+Math.sin(time*0.55*speed)*0.22,ML={x:top.x+(bL.x-top.x)*t,y:top.y+(bL.y-top.y)*t},MR={x:top.x+(bR.x-top.x)*t,y:top.y+(bR.y-top.y)*t};
   dl(ML.x,ML.y,MR.x,MR.y,'#f472b6',3.5);fillTri(top,ML,MR,'rgba(244,114,182,0.08)');
   dp(top.x,top.y,6,'#f8fafc','A');dp(bL.x,bL.y,5,'#60a5fa','B');dp(bR.x,bR.y,5,'#60a5fa','C');dp(ML.x,ML.y,5,'#f472b6','D',true);dp(MR.x,MR.y,5,'#f472b6','E',true);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('A字型相似',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('DE//BC → △ADE∽△ABC',20,46);ctx.fillText(`AD/AB≈${t.toFixed(2)}`,20,62);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('A字型相似',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('DE//BC → △ADE∽△ABC',20,46);ctx.fillText(`AD/AB≈${t.toFixed(2)}`,20,62);
 }
 
 function renderXShape(){
@@ -99,7 +107,7 @@ function renderXShape(){
   let den=(T.x-B.x)*(L.y-R.y)-(T.y-B.y)*(L.x-R.x),tn=(T.x-L.x)*(L.y-R.y)-(T.y-L.y)*(L.x-R.x),tt=den!==0?tn/den:0.5;
   let IX={x:T.x+tt*(B.x-T.x),y:T.y+tt*(B.y-T.y)};fillTri(T,IX,L,'rgba(96,165,250,0.1)');fillTri(B,IX,R,'rgba(244,114,182,0.1)');
   dp(T.x,T.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#60a5fa','B');dp(L.x,L.y,5,'#f472b6','C');dp(R.x,R.y,5,'#f472b6','D');dp(IX.x,IX.y,6,'#fbbf24','O',true);
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('X字型相似(8字型)',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('AB与CD交于O→△AOC∽△BOD',20,46);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('X字型相似(8字型)',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('AB与CD交于O→△AOC∽△BOD',20,46);
 }
 
 function renderMidline(){
@@ -110,7 +118,7 @@ function renderMidline(){
   dl(M.x,M.y,D.x,D.y,'#f472b6',2.5,true);
   if(pulse>0.9){dl(B.x,B.y,D.x,D.y,'#34d399',2.5);dl(C.x,C.y,D.x,D.y,'#34d399',2.5);fillTri(A,B,D,'rgba(52,211,153,0.06)');ctx.fillStyle='#34d399';ctx.font='bold 13px sans-serif';ctx.fillText('平行四边形ABDC',310,430)}
   dp(A.x,A.y,5,'#f8fafc','A');dp(B.x,B.y,5,'#60a5fa','B');dp(C.x,C.y,5,'#60a5fa','C');dp(M.x,M.y,5,'#fbbf24','M',true);dp(D.x,D.y,5,'#f472b6','D');
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('倍长中线法',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('AM是中线→延长至D使MD=AM',20,46);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('倍长中线法',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('AM是中线→延长至D使MD=AM',20,46);
 }
 
 function render(){ctx.setTransform(sX,0,0,sY,0,0);switch(currentModel){case'handshake':renderHandshake();break;case'threeline':renderThreeLine();break;case'ashape':renderAShape();break;case'xshape':renderXShape();break;case'midline':renderMidline();break}}
@@ -128,6 +136,14 @@ function buildUI(){
   document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
   document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1))}));
 }
+const overlay=document.getElementById('fullscreen-overlay'),fsContainer=overlay.querySelector('.fs-canvas-container'),canvasWrap=document.querySelector('.canvas-wrap');let isFullscreen=false;
+function enterFS(){if(isFullscreen)return;isFullscreen=true;fsContainer.appendChild(canvas);overlay.classList.add('active');resizeCanvas();trails.length=0}
+function exitFS(){if(!isFullscreen)return;isFullscreen=false;canvasWrap.appendChild(canvas);overlay.classList.remove('active');resizeCanvas();trails.length=0}
+canvas.addEventListener('pointerdown',()=>enterFS());
+canvasWrap.querySelector('.canvas-hint').addEventListener('pointerdown',e=>{e.stopPropagation();enterFS()});
+document.querySelector('.fs-close-btn').addEventListener('pointerdown',e=>{e.stopPropagation();exitFS()});
+overlay.addEventListener('pointerdown',e=>{if(e.target===overlay)exitFS()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')exitFS()});
 resizeCanvas();buildUI();render();
 function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);
 </script>
