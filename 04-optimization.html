@@ -45,8 +45,8 @@ const DESIGN_W=750,DESIGN_H=600;canvas.width=DESIGN_W;canvas.height=DESIGN_H;
 let currentModel='general',time=0,speed=1;const trails=[],RIVER_Y=380;
 let panelOpen=true;
 function togglePanel(){panelOpen=!panelOpen;document.getElementById('mobilePanel').classList.toggle('collapsed',!panelOpen);document.getElementById('panelToggle').textContent=panelOpen?'⚙ 速度控制':'⚙ 速度控制 ▸'}
-function resizeCanvas(){const w=canvas.parentElement,sw=Math.min((w.clientWidth-8)/DESIGN_W,(w.clientHeight-8)/DESIGN_H);canvas.style.width=(DESIGN_W*sw)+'px';canvas.style.height=(DESIGN_H*sw)+'px'}
-window.addEventListener('resize',resizeCanvas);
+function resizeCanvas(){const w=canvas.parentElement,dpr=window.devicePixelRatio||1;const cw=w.clientWidth,ch=w.clientHeight;canvas.width=cw*dpr;canvas.height=ch*dpr;canvas.style.width=cw+'px';canvas.style.height=ch+'px';sX=canvas.width/DESIGN_W;sY=canvas.height/DESIGN_H}
+window.addEventListener('resize',()=>{resizeCanvas();trails.length=0});
 function addTrail(x,y){trails.push({x,y,life:1});if(trails.length>50)trails.shift()}
 function drawTrails(){for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2.5,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.5})`;ctx.fill();t.life-=0.03}for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1)}
 function glowPt(x,y,r,color){for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(x,y,r+i*5,0,Math.PI*2);ctx.fillStyle=color.replace('1',(0.1-i*0.02).toString());ctx.fill()}}
@@ -103,7 +103,7 @@ function renderFermat(){
   ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('费马点',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`FA+FB+FC≈${tl.toFixed(0)}`,20,44);ctx.fillText('三线夹角=120°',20,60);
 }
 
-function render(){switch(currentModel){case'general':renderGeneral();break;case'hubugui':renderHubugui();break;case'apollonius':renderApollonius();break;case'fermat':renderFermat();break}}
+function render(){ctx.setTransform(sX,0,0,sY,0,0);switch(currentModel){case'general':renderGeneral();break;case'hubugui':renderHubugui();break;case'apollonius':renderApollonius();break;case'fermat':renderFermat();break}}
 
 function buildUI(){
   let models=[{id:'general',n:'🐴 将军饮马',sn:'将军饮马'},{id:'hubugui',n:'🏃 胡不归',sn:'胡不归'},{id:'apollonius',n:'⭕ 阿波罗尼斯圆',sn:'阿氏圆'},{id:'fermat',n:'📍 费马点',sn:'费马点'}];

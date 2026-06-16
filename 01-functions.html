@@ -45,8 +45,7 @@ canvas{display:block;max-width:100%;max-height:100%;border-radius:6px}
 
 <script>
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
-const DESIGN_W=750,DESIGN_H=600;
-canvas.width=DESIGN_W;canvas.height=DESIGN_H;
+let OX,OY,SCALE,W,H;
 let currentModel='linear',time=0,speed=1;
 let params={k:1.5,b:1,a:1,B:-2,c:-3,K:3};
 const trails=[];
@@ -54,29 +53,29 @@ let panelOpen=true;
 
 function togglePanel(){panelOpen=!panelOpen;document.getElementById('mobilePanel').classList.toggle('collapsed',!panelOpen);document.getElementById('panelToggle').textContent=panelOpen?'⚙ 参数控制':'⚙ 参数控制 ▸'}
 
-function resizeCanvas(){
-  const wrap=canvas.parentElement;
-  const maxW=wrap.clientWidth-8,maxH=wrap.clientHeight-8;
-  const s=Math.min(maxW/DESIGN_W,maxH/DESIGN_H);
-  canvas.style.width=(DESIGN_W*s)+'px';canvas.style.height=(DESIGN_H*s)+'px';
-}
-window.addEventListener('resize',resizeCanvas);
+	function resizeCanvas(){
+	  const wrap=canvas.parentElement,dpr=window.devicePixelRatio||1;
+	  W=wrap.clientWidth;H=wrap.clientHeight;
+	  canvas.width=W*dpr;canvas.height=H*dpr;
+	  canvas.style.width=W+'px';canvas.style.height=H+'px';
+	  OX=canvas.width/2;OY=canvas.height/2;SCALE=Math.min(canvas.width,canvas.height)/12;
+	}
+	window.addEventListener('resize',()=>{resizeCanvas();trails.length=0});
 
-const OX=DESIGN_W/2,OY=DESIGN_H/2,SCALE=55;
 function tx(x){return OX+x*SCALE}
 function ty(y){return OY-y*SCALE}
 
 function drawGrid(){
   ctx.strokeStyle='#1e293b';ctx.lineWidth=1;
-  for(let x=-10;x<=10;x++){ctx.beginPath();ctx.moveTo(tx(x),0);ctx.lineTo(tx(x),DESIGN_H);ctx.stroke()}
-  for(let y=-9;y<=9;y++){ctx.beginPath();ctx.moveTo(0,ty(y));ctx.lineTo(DESIGN_W,ty(y));ctx.stroke()}
+  for(let x=-10;x<=10;x++){ctx.beginPath();ctx.moveTo(tx(x),0);ctx.lineTo(tx(x),canvas.height);ctx.stroke()}
+  for(let y=-9;y<=9;y++){ctx.beginPath();ctx.moveTo(0,ty(y));ctx.lineTo(canvas.width,ty(y));ctx.stroke()}
   ctx.strokeStyle='#334155';ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(0,OY);ctx.lineTo(DESIGN_W,OY);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(OX,0);ctx.lineTo(OX,DESIGN_H);ctx.stroke();
-  ctx.fillStyle='#475569';ctx.font='11px sans-serif';
-  for(let x=-9;x<=9;x++)if(x!==0)ctx.fillText(x,tx(x)-8,OY+16);
+  ctx.beginPath();ctx.moveTo(0,OY);ctx.lineTo(canvas.width,OY);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(OX,0);ctx.lineTo(OX,canvas.height);ctx.stroke();
+  ctx.fillStyle='#475569';ctx.font=`${Math.max(10,SCALE*0.18)}px sans-serif`;
+  for(let x=-9;x<=9;x++)if(x!==0)ctx.fillText(x,tx(x)-8,OY+Math.max(14,SCALE*0.26));
   for(let y=-7;y<=7;y++)if(y!==0)ctx.fillText(y,OX+5,ty(y)+4);
-  ctx.fillText('O',OX+4,OY+16);
+  ctx.fillText('O',OX+4,OY+Math.max(14,SCALE*0.26));
 }
 function glow(x,y,r,color,alpha){
   for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(tx(x),ty(y),r+i*4,0,Math.PI*2);ctx.fillStyle=color.replace('1',(alpha*(0.15-i*0.03)).toString());ctx.fill()}
@@ -100,7 +99,7 @@ function renderLinear(){
   drawGrid();const{k,b}=params;
   ctx.strokeStyle='#60a5fa';ctx.lineWidth=3.5;
   ctx.beginPath();let f=true;
-  for(let px=0;px<DESIGN_W;px++){let mx=(px-OX)/SCALE,my=k*mx+b,py=ty(my);if(f){ctx.moveTo(px,py);f=false}else ctx.lineTo(px,py)}
+  for(let px=0;px<canvas.width;px++){let mx=(px-OX)/SCALE,my=k*mx+b,py=ty(my);if(f){ctx.moveTo(px,py);f=false}else ctx.lineTo(px,py)}
   ctx.stroke();
   let phase=time*0.5*speed,xp=(phase%6)-3;if(xp<-2.8||xp>2.8)trails.length=0;
   let yp=k*xp+b;addTrail(xp,yp);drawTrails();
@@ -120,12 +119,12 @@ function renderQuadratic(){
   drawGrid();const{a,B,c}=params;let b=B;
   ctx.strokeStyle='#60a5fa';ctx.lineWidth=3.5;
   ctx.beginPath();let f=true;
-  for(let px=0;px<DESIGN_W;px++){let mx=(px-OX)/SCALE,my=a*mx*mx+b*mx+c,py=ty(my);if(f){ctx.moveTo(px,py);f=false}else ctx.lineTo(px,py)}
+  for(let px=0;px<canvas.width;px++){let mx=(px-OX)/SCALE,my=a*mx*mx+b*mx+c,py=ty(my);if(f){ctx.moveTo(px,py);f=false}else ctx.lineTo(px,py)}
   ctx.stroke();
   let vx=-b/(2*a),vy=a*vx*vx+b*vx+c;
   let pA=Math.sin(time*2*speed)*0.35+0.65;
   ctx.strokeStyle=`rgba(167,139,250,${pA})`;ctx.lineWidth=2.5;ctx.setLineDash([10,6]);
-  ctx.beginPath();ctx.moveTo(tx(vx),0);ctx.lineTo(tx(vx),DESIGN_H);ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(tx(vx),0);ctx.lineTo(tx(vx),canvas.height);ctx.stroke();ctx.setLineDash([]);
   ctx.fillStyle='#a78bfa';ctx.font='bold 13px sans-serif';ctx.fillText(`对称轴 x=${vx.toFixed(1)}`,tx(vx)+8,35);
   let phase=time*speed,offset=((phase%5)/5)*2.8,direction=Math.floor(phase/5)%2;
   if(direction===1)offset=2.8-offset;
@@ -150,10 +149,10 @@ function renderInverse(){
   ctx.strokeStyle='#60a5fa';ctx.lineWidth=3.5;
   [1,-1].forEach(sign=>{
     ctx.beginPath();let f=true;
-    for(let px=0;px<DESIGN_W;px++){
+    for(let px=0;px<canvas.width;px++){
       let mx=(px-OX)/SCALE;if(sign>0&&mx<0.08||sign<0&&mx>-0.08)continue;
       if(mx>9||mx<-9){f=true;continue}
-      let my=k/mx,py=ty(my);if(py<-80||py>DESIGN_H+80){f=true;continue}
+      let my=k/mx,py=ty(my);if(py<-80||py>canvas.height+80){f=true;continue}
       if(f){ctx.moveTo(px,py);f=false}else ctx.lineTo(px,py)
     }
     ctx.stroke();
@@ -172,7 +171,7 @@ function renderInverse(){
 }
 
 function render(){
-  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   if(currentModel==='linear')renderLinear();else if(currentModel==='quadratic')renderQuadratic();else renderInverse();
 }
 

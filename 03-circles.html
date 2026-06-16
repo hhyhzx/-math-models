@@ -46,8 +46,8 @@ let currentModel='vertical',time=0,speed=1;const trails=[];
 const CX=375,CY=310,R=200;
 let panelOpen=true;
 function togglePanel(){panelOpen=!panelOpen;document.getElementById('mobilePanel').classList.toggle('collapsed',!panelOpen);document.getElementById('panelToggle').textContent=panelOpen?'⚙ 速度控制':'⚙ 速度控制 ▸'}
-function resizeCanvas(){const w=canvas.parentElement,sw=Math.min((w.clientWidth-8)/DESIGN_W,(w.clientHeight-8)/DESIGN_H);canvas.style.width=(DESIGN_W*sw)+'px';canvas.style.height=(DESIGN_H*sw)+'px'}
-window.addEventListener('resize',resizeCanvas);
+function resizeCanvas(){const w=canvas.parentElement,dpr=window.devicePixelRatio||1;const cw=w.clientWidth,ch=w.clientHeight;canvas.width=cw*dpr;canvas.height=ch*dpr;canvas.style.width=cw+'px';canvas.style.height=ch+'px';sX=canvas.width/DESIGN_W;sY=canvas.height/DESIGN_H}
+window.addEventListener('resize',()=>{resizeCanvas();trails.length=0});
 function addTrail(x,y){trails.push({x,y,life:1});if(trails.length>40)trails.shift()}
 function drawTrails(){for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.5})`;ctx.fill();t.life-=0.03}for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1)}
 function glowPt(x,y,r,color){for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(x,y,r+i*5,0,Math.PI*2);ctx.fillStyle=color.replace('1',(0.1-i*0.02).toString());ctx.fill()}}
@@ -103,7 +103,7 @@ function renderPower(){
   ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('圆幂定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`PA·PC=${p1.toFixed(0)}`,20,46);ctx.fillText(`PB·PD=${p2.toFixed(0)}`,20,62);ctx.fillStyle=match?'#34d399':'#fbbf24';ctx.font='bold 13px sans-serif';ctx.fillText(match?'✓ 乘积相等':'乘积≈相等',20,80);
 }
 
-function render(){switch(currentModel){case'vertical':renderVertical();break;case'inscribed':renderInscribed();break;case'tangent':renderTangent();break;case'power':renderPower();break}}
+function render(){ctx.setTransform(sX,0,0,sY,0,0);switch(currentModel){case'vertical':renderVertical();break;case'inscribed':renderInscribed();break;case'tangent':renderTangent();break;case'power':renderPower();break}}
 
 function buildUI(){
   let models=[{id:'vertical',n:'📏 垂径定理',sn:'垂径'},{id:'inscribed',n:'📐 圆周角定理',sn:'圆周角'},{id:'tangent',n:'📌 切线性质',sn:'切线'},{id:'power',n:'🔗 圆幂定理',sn:'圆幂'}];
