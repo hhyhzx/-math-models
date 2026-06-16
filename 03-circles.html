@@ -2,221 +2,124 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>圆模型 — 动态演示</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Microsoft YaHei',sans-serif;background:#0a0f1e;color:#e2e8f0;height:100vh;display:flex}
-.sidebar{width:300px;background:#111827;border-right:1px solid #1e293b;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;font-size:.88em}
-.sidebar h3{font-size:.9em;color:#60a5fa;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
-.tab-btn{padding:11px 14px;background:#1a2332;border:1px solid #2a3548;color:#cbd5e1;border-radius:10px;cursor:pointer;font-size:.85em;text-align:left;transition:all .2s}
-.tab-btn:hover{border-color:#60a5fa}
+body{font-family:'Microsoft YaHei',sans-serif;background:#0a0f1e;color:#e2e8f0;height:100dvh;display:flex;overflow:hidden}
+.sidebar{width:290px;min-width:290px;background:#111827;border-right:1px solid #1e293b;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;font-size:.85em;z-index:2}
+.tab-btn{padding:10px 12px;background:#1a2332;border:1px solid #2a3548;color:#cbd5e1;border-radius:8px;cursor:pointer;font-size:.82em;text-align:left;transition:all .2s;-webkit-tap-highlight-color:transparent}
+.tab-btn:active{background:#2563eb}
 .tab-btn.active{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#3b82f6;color:#fff}
-.control-group{background:#1a2332;border-radius:10px;padding:14px;border:1px solid #2a3548}
-.control-group input[type=range]{width:100%;accent-color:#60a5fa}
-.info-box{background:#1a2332;border-radius:10px;padding:14px;font-size:.78em;line-height:1.8;color:#94a3b8;border:1px solid #2a3548}
+.ctrl{background:#1a2332;border-radius:8px;padding:10px;border:1px solid #2a3548}
+.ctrl input[type=range]{width:100%;accent-color:#60a5fa}
+.info-box{background:#1a2332;border-radius:8px;padding:10px;font-size:.74em;line-height:1.7;color:#94a3b8;border:1px solid #2a3548}
 .info-box b{color:#f1f5f9}.info-box .hl{color:#fbbf24;font-weight:bold}
-.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#0f172a 0%,#0a0f1e 100%)}
-canvas{border-radius:10px}
-.back-link{color:#60a5fa;text-decoration:none;font-size:.82em;display:flex;align-items:center;gap:4px}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#0f172a 0%,#0a0f1e 100%);overflow:hidden;min-width:0}
+canvas{display:block;max-width:100%;max-height:100%;border-radius:6px}
+.back-link{color:#60a5fa;text-decoration:none;font-size:.8em;display:flex;align-items:center;gap:3px}
 .vd{color:#60a5fa;font-weight:bold}
-.flash-text{animation:flashIn .5s ease-out}
-@keyframes flashIn{0%{opacity:0;transform:scale(1.3)}100%{opacity:1;transform:scale(1)}}
+.mobile-tabs{display:none}.mobile-panel{display:none}
+@media(max-width:768px){
+  body{flex-direction:column}.sidebar{display:none}
+  .canvas-wrap{flex:1;min-height:0;order:1}
+  .mobile-tabs{display:flex;order:2;gap:4px;padding:6px;background:#111827;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0}
+  .mobile-tabs .tab-btn{flex-shrink:0;white-space:nowrap;font-size:.72em;padding:7px 9px}
+  .mobile-panel{display:block;order:3;background:#111827;border-top:1px solid #1e293b;padding:8px 10px;max-height:35vh;overflow-y:auto;flex-shrink:0}
+  .mobile-panel.collapsed{max-height:0;padding:0;overflow:hidden}
+  .panel-toggle{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px;background:#1a2332;color:#94a3b8;border:none;width:100%;font-size:.78em;cursor:pointer;order:4;flex-shrink:0}
+}
+@media(min-width:769px){.panel-toggle{display:none}}
 </style>
 </head>
 <body>
 <div class="sidebar" id="sidebar"></div>
 <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div class="mobile-tabs" id="mobileTabs"></div>
+<div class="mobile-panel" id="mobilePanel"></div>
+<button class="panel-toggle" id="panelToggle" onclick="togglePanel()">⚙ 速度控制</button>
 
 <script>
-const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d'),sidebar=document.getElementById('sidebar');
-const W=750,H=600;canvas.width=W;canvas.height=H;
-let currentModel='vertical',time=0,speed=1;
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const DESIGN_W=750,DESIGN_H=600;canvas.width=DESIGN_W;canvas.height=DESIGN_H;
+let currentModel='vertical',time=0,speed=1;const trails=[];
 const CX=375,CY=310,R=200;
-const trails=[];
-
+let panelOpen=true;
+function togglePanel(){panelOpen=!panelOpen;document.getElementById('mobilePanel').classList.toggle('collapsed',!panelOpen);document.getElementById('panelToggle').textContent=panelOpen?'⚙ 速度控制':'⚙ 速度控制 ▸'}
+function resizeCanvas(){const w=canvas.parentElement,sw=Math.min((w.clientWidth-8)/DESIGN_W,(w.clientHeight-8)/DESIGN_H);canvas.style.width=(DESIGN_W*sw)+'px';canvas.style.height=(DESIGN_H*sw)+'px'}
+window.addEventListener('resize',resizeCanvas);
 function addTrail(x,y){trails.push({x,y,life:1});if(trails.length>40)trails.shift()}
-function drawTrails(){
-  for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.5})`;ctx.fill();t.life-=0.03}
-  for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1);
-}
-function glowPt(x,y,r,color){
-  for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(x,y,r+i*5,0,Math.PI*2);ctx.fillStyle=color.replace('1',(0.1-i*0.02).toString());ctx.fill()}
-}
-function dp(x,y,r,color,label,glow=false){
-  if(glow)glowPt(x,y,r,color);
-  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
-  if(label){ctx.fillStyle='#f1f5f9';ctx.font='bold 13px sans-serif';ctx.fillText(label,x+10,y-10)}
-}
-function dl(x1,y1,x2,y2,color,width=2,dashed=false){
-  if(dashed)ctx.setLineDash([8,5]);else ctx.setLineDash([]);
-  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
-}
-function drawCircle(color,lw){ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke()}
+function drawTrails(){for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.5})`;ctx.fill();t.life-=0.03}for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1)}
+function glowPt(x,y,r,color){for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(x,y,r+i*5,0,Math.PI*2);ctx.fillStyle=color.replace('1',(0.1-i*0.02).toString());ctx.fill()}}
+function dp(x,y,r,color,label,glow=false){if(glow)glowPt(x,y,r,color);ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();if(label){ctx.fillStyle='#f1f5f9';ctx.font='bold 13px sans-serif';ctx.fillText(label,x+10,y-10)}}
+function dl(x1,y1,x2,y2,color,width=2,dashed=false){if(dashed)ctx.setLineDash([8,5]);else ctx.setLineDash([]);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([])}
+function dCircle(color,lw){ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke()}
 
-// ═══════════ 垂径定理 ═══════════
 function renderVertical(){
-  ctx.clearRect(0,0,W,H);drawCircle('#334155',2.5);
-  let chordAng=time*0.55*speed;
-  let A={x:CX+R*Math.cos(chordAng),y:CY+R*Math.sin(chordAng)};
-  let B={x:CX+R*Math.cos(chordAng+Math.PI),y:CY+R*Math.sin(chordAng+Math.PI)};
-  let M={x:(A.x+B.x)/2,y:(A.y+B.y)/2};
-  dl(A.x,A.y,B.x,B.y,'#60a5fa',3.5);
-  let radiusAng=Math.atan2(M.y-CY,M.x-CX);
-  let Rmid={x:CX+R*Math.cos(radiusAng),y:CY+R*Math.sin(radiusAng)};
-  let Rfar={x:CX+R*Math.cos(radiusAng+Math.PI),y:CY+R*Math.sin(radiusAng+Math.PI)};
-  dl(Rmid.x,Rmid.y,Rfar.x,Rfar.y,'#f472b6',2.5);
-  dl(CX,CY,M.x,M.y,'#fbbf24',2.5,true);
-  // Right angle mark
-  let s=16;let perp=radiusAng+Math.PI/2;
-  ctx.beginPath();ctx.moveTo(M.x+s*Math.cos(chordAng),M.y+s*Math.sin(chordAng));
-  ctx.lineTo(M.x+s*Math.cos(chordAng)+s*Math.cos(radiusAng),M.y+s*Math.sin(chordAng)+s*Math.sin(radiusAng));
-  ctx.lineTo(M.x+s*Math.cos(radiusAng),M.y+s*Math.sin(radiusAng));
-  ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke();
-  let hc=Math.hypot(A.x-M.x,A.y-M.y);
-  dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#60a5fa','B');dp(M.x,M.y,5,'#f472b6','M',true);dp(CX,CY,4,'#f8fafc','O');
-
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText('垂径定理',20,32);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
-  ctx.fillText(`AM = MB = ${hc.toFixed(0)} px`,20,52);
-  ctx.fillText('直径 ⊥ 弦 → 平分弦',20,72);
-  ctx.fillText('✨ 弦自动旋转，垂直+平分始终成立',20,96);
-  ctx.fillText('知二推三：过圆心/垂直/平分弦',20,116);
+  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);dCircle('#334155',2.5);
+  let cA=time*0.55*speed,A={x:CX+R*Math.cos(cA),y:CY+R*Math.sin(cA)},B={x:CX+R*Math.cos(cA+Math.PI),y:CY+R*Math.sin(cA+Math.PI)},M={x:(A.x+B.x)/2,y:(A.y+B.y)/2};
+  dl(A.x,A.y,B.x,B.y,'#60a5fa',3.5);let rA=Math.atan2(M.y-CY,M.x-CX);
+  let Rm={x:CX+R*Math.cos(rA),y:CY+R*Math.sin(rA)},Rf={x:CX+R*Math.cos(rA+Math.PI),y:CY+R*Math.sin(rA+Math.PI)};
+  dl(Rm.x,Rm.y,Rf.x,Rf.y,'#f472b6',2.5);dl(CX,CY,M.x,M.y,'#fbbf24',2.5,true);
+  let s=16,perp=rA+Math.PI/2;ctx.beginPath();ctx.moveTo(M.x+s*Math.cos(cA),M.y+s*Math.sin(cA));ctx.lineTo(M.x+s*Math.cos(cA)+s*Math.cos(rA),M.y+s*Math.sin(cA)+s*Math.sin(rA));ctx.lineTo(M.x+s*Math.cos(rA),M.y+s*Math.sin(rA));ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke();
+  let hc=Math.hypot(A.x-M.x,A.y-M.y);dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#60a5fa','B');dp(M.x,M.y,5,'#f472b6','M',true);dp(CX,CY,4,'#f8fafc','O');
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('垂径定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`AM=MB=${hc.toFixed(0)}px`,20,46);ctx.fillText('直径⊥弦→平分弦',20,62);
 }
 
-// ═══════════ 圆周角定理 ═══════════
 function renderInscribed(){
-  ctx.clearRect(0,0,W,H);drawCircle('#334155',2.5);
-  let a1=time*0.3*speed,a2=a1+1.0;
-  let A={x:CX+R*Math.cos(a1),y:CY+R*Math.sin(a1)};
-  let B={x:CX+R*Math.cos(a2),y:CY+R*Math.sin(a2)};
-  // Central angle
+  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);dCircle('#334155',2.5);
+  let a1=time*0.3*speed,a2=a1+1.0,A={x:CX+R*Math.cos(a1),y:CY+R*Math.sin(a1)},B={x:CX+R*Math.cos(a2),y:CY+R*Math.sin(a2)};
   dl(CX,CY,A.x,A.y,'#f472b6',2.5);dl(CX,CY,B.x,B.y,'#f472b6',2.5);
-  let cenAngDeg=((a2-a1)*180/Math.PI);
-  // Moving P
-  let pAng=time*0.55*speed+2.5;
-  let P={x:CX+R*Math.cos(pAng),y:CY+R*Math.sin(pAng)};
-  addTrail(P.x,P.y);drawTrails();
-  dl(P.x,P.y,A.x,A.y,'#60a5fa',3);dl(P.x,P.y,B.x,B.y,'#60a5fa',3);
-  // Angle arcs
+  let cd=((a2-a1)*180/Math.PI),pA=time*0.55*speed+2.5,P={x:CX+R*Math.cos(pA),y:CY+R*Math.sin(pA)};
+  addTrail(P.x,P.y);drawTrails();dl(P.x,P.y,A.x,A.y,'#60a5fa',3);dl(P.x,P.y,B.x,B.y,'#60a5fa',3);
   ctx.beginPath();ctx.arc(CX,CY,42,a1,a2);ctx.strokeStyle='#f472b6';ctx.lineWidth=3;ctx.stroke();
   ctx.beginPath();ctx.arc(P.x,P.y,32,Math.atan2(A.y-P.y,A.x-P.x),Math.atan2(B.y-P.y,B.x-P.x));ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;ctx.stroke();
-  dl(A.x,A.y,B.x,B.y,'#f8fafc',1.5,true);
-  let inscAng=(cenAngDeg/2);
+  dl(A.x,A.y,B.x,B.y,'#f8fafc',1.5,true);let ia=cd/2;
   dp(A.x,A.y,5,'#f8fafc','A');dp(B.x,B.y,5,'#f8fafc','B');dp(P.x,P.y,7,'#fbbf24','P',true);dp(CX,CY,4,'#f8fafc','O');
-
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText('圆周角定理',20,32);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
-  ctx.fillText(`圆心角 ∠AOB ≈ ${cenAngDeg.toFixed(1)}°`,20,54);
-  ctx.fillText(`圆周角 ∠APB ≈ ${inscAng.toFixed(1)}°`,20,76);
-  ctx.fillStyle='#fbbf24';ctx.font='bold 15px sans-serif';
-  ctx.fillText('✨ 圆周角 = 圆心角的一半',20,100);
-  ctx.fillText('P沿圆周跑圈，∠APB始终不变！',20,124);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('圆周角定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`圆心角≈${cd.toFixed(1)}°`,20,48);ctx.fillText(`圆周角≈${ia.toFixed(1)}°`,20,64);ctx.fillStyle='#fbbf24';ctx.font='bold 13px sans-serif';ctx.fillText('✨ 圆周角=圆心角/2',20,84);
 }
 
-// ═══════════ 切线性质 ═══════════
 function renderTangent(){
-  ctx.clearRect(0,0,W,H);drawCircle('#334155',2.5);
-  let tangAng=time*0.45*speed;
-  let T={x:CX+R*Math.cos(tangAng),y:CY+R*Math.sin(tangAng)};
-  dl(CX,CY,T.x,T.y,'#fbbf24',2.5);
-  let perp=tangAng+Math.PI/2,len=280;
-  dl(T.x+len*Math.cos(perp),T.y+len*Math.sin(perp),T.x-len*Math.cos(perp),T.y-len*Math.sin(perp),'#60a5fa',3.5);
-  // Right angle mark
-  let s=16;
-  ctx.beginPath();ctx.moveTo(T.x+s*Math.cos(tangAng),T.y+s*Math.sin(tangAng));
-  ctx.lineTo(T.x+s*Math.cos(tangAng)+s*Math.cos(perp),T.y+s*Math.sin(tangAng)+s*Math.sin(perp));
-  ctx.lineTo(T.x+s*Math.cos(perp),T.y+s*Math.sin(perp));
-  ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke();
-  // External point with 2 tangents
-  let pDist=R*0.65,pAng=tangAng-0.25;
-  let P={x:CX+(R+pDist)*Math.cos(pAng),y:CY+(R+pDist)*Math.sin(pAng)};
-  let d=Math.hypot(P.x-CX,P.y-CY),alpha=Math.acos(R/d);
-  let base=Math.atan2(CY-P.y,CX-P.x);
-  let T2ang=base+alpha+Math.PI;
-  let T2={x:CX+R*Math.cos(T2ang),y:CY+R*Math.sin(T2ang)};
-  dl(P.x,P.y,T.x,T.y,'#34d399',2.5);dl(P.x,P.y,T2.x,T2.y,'#34d399',2.5);
-  dl(P.x,P.y,CX,CY,'#475569',1,true);
-  let t1=Math.hypot(P.x-T.x,P.y-T.y),t2=Math.hypot(P.x-T2.x,P.y-T2.y);
+  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);dCircle('#334155',2.5);
+  let tA=time*0.45*speed,T={x:CX+R*Math.cos(tA),y:CY+R*Math.sin(tA)};dl(CX,CY,T.x,T.y,'#fbbf24',2.5);
+  let perp=tA+Math.PI/2,len=280;dl(T.x+len*Math.cos(perp),T.y+len*Math.sin(perp),T.x-len*Math.cos(perp),T.y-len*Math.sin(perp),'#60a5fa',3.5);
+  let s=16;ctx.beginPath();ctx.moveTo(T.x+s*Math.cos(tA),T.y+s*Math.sin(tA));ctx.lineTo(T.x+s*Math.cos(tA)+s*Math.cos(perp),T.y+s*Math.sin(tA)+s*Math.sin(perp));ctx.lineTo(T.x+s*Math.cos(perp),T.y+s*Math.sin(perp));ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke();
+  let pD=R*0.65,pAn=tA-0.25,P={x:CX+(R+pD)*Math.cos(pAn),y:CY+(R+pD)*Math.sin(pAn)};
+  let d=Math.hypot(P.x-CX,P.y-CY),alpha=Math.acos(R/d),base=Math.atan2(CY-P.y,CX-P.x),T2a=base+alpha+Math.PI,T2={x:CX+R*Math.cos(T2a),y:CY+R*Math.sin(T2a)};
+  dl(P.x,P.y,T.x,T.y,'#34d399',2.5);dl(P.x,P.y,T2.x,T2.y,'#34d399',2.5);dl(P.x,P.y,CX,CY,'#475569',1,true);
   dp(T.x,T.y,5,'#60a5fa','T₁');dp(T2.x,T2.y,5,'#60a5fa','T₂');dp(P.x,P.y,6,'#fbbf24','P',true);dp(CX,CY,4,'#f8fafc','O');
-
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText('切线性质',20,32);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
-  ctx.fillText('半径 ⊥ 切线（切点处）',20,52);
-  ctx.fillText(`PT₁ = ${t1.toFixed(0)} ≈ PT₂ = ${t2.toFixed(0)}`,20,74);
-  ctx.fillText('✨ 切线长定理：PT₁ = PT₂',20,98);
-  ctx.fillText('OP平分∠T₁PT₂',20,118);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('切线性质',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('半径⊥切线,PT₁=PT₂',20,46);ctx.fillText('✨ 切线长定理',20,62);
 }
 
-// ═══════════ 圆幂定理 ═══════════
 function renderPower(){
-  ctx.clearRect(0,0,W,H);drawCircle('#334155',2.5);
-  let ang1=time*0.38*speed,ang2=ang1+1.7,ang3=time*0.44*speed+2.8,ang4=ang3+1.7;
-  let A={x:CX+R*Math.cos(ang1),y:CY+R*Math.sin(ang1)};
-  let C={x:CX+R*Math.cos(ang2),y:CY+R*Math.sin(ang2)};
-  let B={x:CX+R*Math.cos(ang3),y:CY+R*Math.sin(ang3)};
-  let D={x:CX+R*Math.cos(ang4),y:CY+R*Math.sin(ang4)};
-  function intersect(p1,p2,p3,p4){
-    let d=(p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x);
-    if(Math.abs(d)<0.001)return{x:CX,y:CY};
-    let t=((p1.x-p3.x)*(p3.y-p4.y)-(p1.y-p3.y)*(p3.x-p4.x))/d;
-    return{x:p1.x+t*(p2.x-p1.x),y:p1.y+t*(p2.y-p1.y)};
-  }
-  let P=intersect(A,C,B,D);
-  dl(A.x,A.y,C.x,C.y,'#60a5fa',3);dl(B.x,B.y,D.x,D.y,'#f472b6',3);
-  // Similar triangles
-  ctx.fillStyle='rgba(96,165,250,0.1)';ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(P.x,P.y);ctx.lineTo(D.x,D.y);ctx.closePath();ctx.fill();
-  ctx.fillStyle='rgba(244,114,182,0.1)';ctx.beginPath();ctx.moveTo(B.x,B.y);ctx.lineTo(P.x,P.y);ctx.lineTo(C.x,C.y);ctx.closePath();ctx.fill();
-  let pa=Math.hypot(P.x-A.x,P.y-A.y),pc=Math.hypot(P.x-C.x,P.y-C.y);
-  let pb=Math.hypot(P.x-B.x,P.y-B.y),pd=Math.hypot(P.x-D.x,P.y-D.y);
-  let prod1=pa*pc,prod2=pb*pd;
-  let match=Math.abs(prod1-prod2)<5;
-  dp(A.x,A.y,4,'#60a5fa','A');dp(C.x,C.y,4,'#60a5fa','C');dp(B.x,B.y,4,'#f472b6','B');dp(D.x,D.y,4,'#f472b6','D');
-  dp(P.x,P.y,6,'#fbbf24','P',true);
-
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText('圆幂定理（相交弦）',20,32);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
-  ctx.fillText(`PA×PC = ${prod1.toFixed(0)}`,20,54);
-  ctx.fillText(`PB×PD = ${prod2.toFixed(0)}`,20,76);
-  ctx.fillStyle=match?'#34d399':'#fbbf24';ctx.font='bold 15px sans-serif';
-  ctx.fillText(match?'✓ PA·PC = PB·PD ⬤':'PA·PC ≈ PB·PD',20,100);
-  ctx.fillText('✨ 两弦自动旋转，乘积始终相等',20,124);
+  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);dCircle('#334155',2.5);
+  let a1=time*0.38*speed,a2=a1+1.7,a3=time*0.44*speed+2.8,a4=a3+1.7;
+  let A={x:CX+R*Math.cos(a1),y:CY+R*Math.sin(a1)},C={x:CX+R*Math.cos(a2),y:CY+R*Math.sin(a2)},B={x:CX+R*Math.cos(a3),y:CY+R*Math.sin(a3)},D={x:CX+R*Math.cos(a4),y:CY+R*Math.sin(a4)};
+  function is(p1,p2,p3,p4){let d=(p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x);if(Math.abs(d)<0.001)return{x:CX,y:CY};let t=((p1.x-p3.x)*(p3.y-p4.y)-(p1.y-p3.y)*(p3.x-p4.x))/d;return{x:p1.x+t*(p2.x-p1.x),y:p1.y+t*(p2.y-p1.y)}}
+  let P=is(A,C,B,D);dl(A.x,A.y,C.x,C.y,'#60a5fa',3);dl(B.x,B.y,D.x,D.y,'#f472b6',3);
+  let pa=Math.hypot(P.x-A.x,P.y-A.y),pc=Math.hypot(P.x-C.x,P.y-C.y),pb=Math.hypot(P.x-B.x,P.y-B.y),pd=Math.hypot(P.x-D.x,P.y-D.y);
+  let p1=pa*pc,p2=pb*pd,match=Math.abs(p1-p2)<5;
+  dp(A.x,A.y,4,'#60a5fa','A');dp(C.x,C.y,4,'#60a5fa','C');dp(B.x,B.y,4,'#f472b6','B');dp(D.x,D.y,4,'#f472b6','D');dp(P.x,P.y,6,'#fbbf24','P',true);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('圆幂定理',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`PA·PC=${p1.toFixed(0)}`,20,46);ctx.fillText(`PB·PD=${p2.toFixed(0)}`,20,62);ctx.fillStyle=match?'#34d399':'#fbbf24';ctx.font='bold 13px sans-serif';ctx.fillText(match?'✓ 乘积相等':'乘积≈相等',20,80);
 }
 
-function render(){
-  switch(currentModel){
-    case'vertical':renderVertical();break;case'inscribed':renderInscribed();break;
-    case'tangent':renderTangent();break;case'power':renderPower();break;
-  }
-}
+function render(){switch(currentModel){case'vertical':renderVertical();break;case'inscribed':renderInscribed();break;case'tangent':renderTangent();break;case'power':renderPower();break}}
 
-function buildSidebar(){
-  let html=`<a href="index.html" class="back-link">← 返回首页</a>`;
-  let models=[
-    {id:'vertical',name:'📏 垂径定理 · 弦旋转+直角'},
-    {id:'inscribed',name:'📐 圆周角定理 · P绕圈跑'},
-    {id:'tangent',name:'📌 切线性质 · 切点旋转'},
-    {id:'power',name:'🔗 圆幂定理 · 双弦旋转'},
-  ];
-  for(let m of models)html+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.name}</button>`;
-  html+=`<div class="control-group"><h3>⚡ 动画速度</h3>
-    <input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="speedS">
-    <span style="font-size:.75em;color:#64748b">当前: <span class="vd" id="speedV">${speed.toFixed(1)}x</span></span>
-  </div>`;
-  let infos={
-    vertical:'<b>垂径定理：</b><br>垂直于弦的直径平分弦<br>→ <span class="hl">AM = MB</span><br>→ 知二推三：过圆心、⊥弦、平分弦<br>→ 5个条件知2推3',
-    inscribed:'<b>圆周角定理：</b><br>同弧所对圆周角 = 圆心角/2<br>→ <span class="hl">P在圆上任意位置，∠APB不变</span><br>→ 直径所对圆周角=90°<br>→ 圆内接四边形对角互补',
-    tangent:'<b>切线性质：</b><br>过切点的半径 ⊥ 切线<br>→ <span class="hl">切线长定理：PT₁ = PT₂</span><br>→ 弦切角 = 所夹弧的圆周角<br>→ OP平分两切线夹角',
-    power:'<b>圆幂定理：</b><br>弦AC与弦BD交于P<br>→ <span class="hl">PA·PC = PB·PD</span><br>→ 本质：△PAD∽△PBC<br>→ 切割线定理是其推广',
-  };
-  html+=`<div class="info-box">${infos[currentModel]}</div>`;
-  sidebar.innerHTML=html;
-  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildSidebar();render()}));
-  document.getElementById('speedS').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('speedV').textContent=speed.toFixed(1)});
+function buildUI(){
+  let models=[{id:'vertical',n:'📏 垂径定理',sn:'垂径'},{id:'inscribed',n:'📐 圆周角定理',sn:'圆周角'},{id:'tangent',n:'📌 切线性质',sn:'切线'},{id:'power',n:'🔗 圆幂定理',sn:'圆幂'}];
+  let st='<a href="index.html" class="back-link">← 返回首页</a><div style="display:flex;flex-direction:column;gap:4px">';
+  models.forEach(m=>{st+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.n}</button>`});
+  st+=`</div><div class="ctrl"><h3>⚡ 速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="ss"><span style="font-size:.72em;color:#64748b"><span class="vd" id="sv">${speed.toFixed(1)}x</span></span></div>`;
+  let infos={vertical:'<b>垂径定理</b><br>⊥弦的直径<span class="hl">平分弦</span><br>知二推三',inscribed:'<b>圆周角定理</b><br><span class="hl">同弧圆周角=圆心角/2</span><br>P任意位置∠不变',tangent:'<b>切线性质</b><br>半径⊥切线<br><span class="hl">切线长相等</span>',power:'<b>圆幂定理</b><br>两弦交于P<br><span class="hl">PA·PC=PB·PD</span>'};
+  st+=`<div class="info-box">${infos[currentModel]}</div>`;
+  document.getElementById('sidebar').innerHTML=st;
+  let mt='';models.forEach(m=>{mt+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.sn}</button>`});
+  document.getElementById('mobileTabs').innerHTML=mt;document.getElementById('mobilePanel').innerHTML=st;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
+  document.getElementById('ss').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('sv').textContent=speed.toFixed(1)});
 }
-
-function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}
-buildSidebar();render();requestAnimationFrame(animate);
+resizeCanvas();buildUI();render();
+function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);
 </script>
 </body>
 </html>

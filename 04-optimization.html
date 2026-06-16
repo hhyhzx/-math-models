@@ -2,248 +2,124 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>最值模型 — 动态演示</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Microsoft YaHei',sans-serif;background:#0a0f1e;color:#e2e8f0;height:100vh;display:flex}
-.sidebar{width:300px;background:#111827;border-right:1px solid #1e293b;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;font-size:.88em}
-.sidebar h3{font-size:.9em;color:#60a5fa;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
-.tab-btn{padding:11px 14px;background:#1a2332;border:1px solid #2a3548;color:#cbd5e1;border-radius:10px;cursor:pointer;font-size:.85em;text-align:left;transition:all .2s}
-.tab-btn:hover{border-color:#60a5fa}
+body{font-family:'Microsoft YaHei',sans-serif;background:#0a0f1e;color:#e2e8f0;height:100dvh;display:flex;overflow:hidden}
+.sidebar{width:290px;min-width:290px;background:#111827;border-right:1px solid #1e293b;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;font-size:.85em;z-index:2}
+.tab-btn{padding:10px 12px;background:#1a2332;border:1px solid #2a3548;color:#cbd5e1;border-radius:8px;cursor:pointer;font-size:.82em;text-align:left;transition:all .2s;-webkit-tap-highlight-color:transparent}
+.tab-btn:active{background:#2563eb}
 .tab-btn.active{background:linear-gradient(135deg,#1d4ed8,#2563eb);border-color:#3b82f6;color:#fff}
-.control-group{background:#1a2332;border-radius:10px;padding:14px;border:1px solid #2a3548}
-.control-group input[type=range]{width:100%;accent-color:#60a5fa}
-.info-box{background:#1a2332;border-radius:10px;padding:14px;font-size:.78em;line-height:1.8;color:#94a3b8;border:1px solid #2a3548}
+.ctrl{background:#1a2332;border-radius:8px;padding:10px;border:1px solid #2a3548}
+.ctrl input[type=range]{width:100%;accent-color:#60a5fa}
+.info-box{background:#1a2332;border-radius:8px;padding:10px;font-size:.74em;line-height:1.7;color:#94a3b8;border:1px solid #2a3548}
 .info-box b{color:#f1f5f9}.info-box .hl{color:#fbbf24;font-weight:bold}
-.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#0f172a 0%,#0a0f1e 100%)}
-canvas{border-radius:10px}
-.back-link{color:#60a5fa;text-decoration:none;font-size:.82em;display:flex;align-items:center;gap:4px}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#0f172a 0%,#0a0f1e 100%);overflow:hidden;min-width:0}
+canvas{display:block;max-width:100%;max-height:100%;border-radius:6px}
+.back-link{color:#60a5fa;text-decoration:none;font-size:.8em;display:flex;align-items:center;gap:3px}
 .vd{color:#60a5fa;font-weight:bold}
+.mobile-tabs{display:none}.mobile-panel{display:none}
+@media(max-width:768px){
+  body{flex-direction:column}.sidebar{display:none}
+  .canvas-wrap{flex:1;min-height:0;order:1}
+  .mobile-tabs{display:flex;order:2;gap:4px;padding:6px;background:#111827;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0}
+  .mobile-tabs .tab-btn{flex-shrink:0;white-space:nowrap;font-size:.72em;padding:7px 9px}
+  .mobile-panel{display:block;order:3;background:#111827;border-top:1px solid #1e293b;padding:8px 10px;max-height:35vh;overflow-y:auto;flex-shrink:0}
+  .mobile-panel.collapsed{max-height:0;padding:0;overflow:hidden}
+  .panel-toggle{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px;background:#1a2332;color:#94a3b8;border:none;width:100%;font-size:.78em;cursor:pointer;order:4;flex-shrink:0}
+}
+@media(min-width:769px){.panel-toggle{display:none}}
 </style>
 </head>
 <body>
 <div class="sidebar" id="sidebar"></div>
 <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+<div class="mobile-tabs" id="mobileTabs"></div>
+<div class="mobile-panel" id="mobilePanel"></div>
+<button class="panel-toggle" id="panelToggle" onclick="togglePanel()">⚙ 速度控制</button>
 
 <script>
-const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d'),sidebar=document.getElementById('sidebar');
-const W=750,H=600;canvas.width=W;canvas.height=H;
-let currentModel='general',time=0,speed=1;
-const RIVER_Y=380,trails=[];
-
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const DESIGN_W=750,DESIGN_H=600;canvas.width=DESIGN_W;canvas.height=DESIGN_H;
+let currentModel='general',time=0,speed=1;const trails=[],RIVER_Y=380;
+let panelOpen=true;
+function togglePanel(){panelOpen=!panelOpen;document.getElementById('mobilePanel').classList.toggle('collapsed',!panelOpen);document.getElementById('panelToggle').textContent=panelOpen?'⚙ 速度控制':'⚙ 速度控制 ▸'}
+function resizeCanvas(){const w=canvas.parentElement,sw=Math.min((w.clientWidth-8)/DESIGN_W,(w.clientHeight-8)/DESIGN_H);canvas.style.width=(DESIGN_W*sw)+'px';canvas.style.height=(DESIGN_H*sw)+'px'}
+window.addEventListener('resize',resizeCanvas);
 function addTrail(x,y){trails.push({x,y,life:1});if(trails.length>50)trails.shift()}
-function drawTrails(){
-  for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2.5,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.5})`;ctx.fill();t.life-=0.03}
-  for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1);
-}
-function glowPt(x,y,r,color){
-  for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(x,y,r+i*5,0,Math.PI*2);ctx.fillStyle=color.replace('1',(0.1-i*0.02).toString());ctx.fill()}
-}
-function dp(x,y,r,color,label,glow=false){
-  if(glow)glowPt(x,y,r,color);
-  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
-  if(label){ctx.fillStyle='#f1f5f9';ctx.font='bold 13px sans-serif';ctx.fillText(label,x+10,y-10)}
-}
-function dl(x1,y1,x2,y2,color,width=2,dashed=false){
-  if(dashed)ctx.setLineDash([8,5]);else ctx.setLineDash([]);
-  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
-}
+function drawTrails(){for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2.5,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.5})`;ctx.fill();t.life-=0.03}for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1)}
+function glowPt(x,y,r,color){for(let i=3;i>=0;i--){ctx.beginPath();ctx.arc(x,y,r+i*5,0,Math.PI*2);ctx.fillStyle=color.replace('1',(0.1-i*0.02).toString());ctx.fill()}}
+function dp(x,y,r,color,label,glow=false){if(glow)glowPt(x,y,r,color);ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();if(label){ctx.fillStyle='#f1f5f9';ctx.font='bold 13px sans-serif';ctx.fillText(label,x+10,y-10)}}
+function dl(x1,y1,x2,y2,color,width=2,dashed=false){if(dashed)ctx.setLineDash([8,5]);else ctx.setLineDash([]);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([])}
 
-// ═══════════ 将军饮马 ═══════════
 function renderGeneral(){
-  ctx.clearRect(0,0,W,H);
-  let A={x:140,y:155},B={x:540,y:105};
-  dl(30,RIVER_Y,W-30,RIVER_Y,'#475569',2.5);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';ctx.fillText('直线 l（河流）',W-150,RIVER_Y-10);
-  let Ar={x:A.x,y:RIVER_Y+(RIVER_Y-A.y)};
-  dl(A.x,A.y,Ar.x,Ar.y,'#475569',1,true);
-  // Reflection indicators
-  ctx.setLineDash([3,3]);ctx.strokeStyle='#475569';ctx.lineWidth=1;
-  for(let i=0;i<4;i++){let yy=A.y+(Ar.y-A.y)*i/3;ctx.beginPath();ctx.moveTo(A.x-10,yy);ctx.lineTo(A.x+10,yy);ctx.stroke()}
-  ctx.setLineDash([]);
-  dp(Ar.x,Ar.y,4,'#64748b',"A'");
-  // Optimized P
-  let t_opt=(RIVER_Y-Ar.y)/(B.y-Ar.y);
-  let Popt={x:Ar.x+t_opt*(B.x-Ar.x),y:RIVER_Y};
-  // Sliding P
-  let pX=110+(Math.sin(time*0.55*speed)*0.5+0.5)*420;
-  let P={x:pX,y:RIVER_Y};
-  addTrail(P.x,P.y);drawTrails();
-  dl(A.x,A.y,P.x,P.y,'#60a5fa',2.5);dl(P.x,P.y,B.x,B.y,'#60a5fa',2.5);
-  dl(Ar.x,Ar.y,B.x,B.y,'#f472b6',1.5,true);
-  let dAP=Math.hypot(A.x-P.x,A.y-P.y),dPB=Math.hypot(P.x-B.x,P.y-B.y);
-  let total=dAP+dPB;
-  let dOpt=Math.hypot(A.x-Popt.x,A.y-Popt.y)+Math.hypot(Popt.x-B.x,Popt.y-B.y);
-  let nearOpt=Math.abs(P.x-Popt.x)<15;
-  dp(Popt.x,Popt.y,6,'#f472b6','最优P');
-  dp(A.x,A.y,6,'#60a5fa','A');dp(B.x,B.y,5,'#f472b6','B');
-  dp(P.x,P.y,7,nearOpt?'#34d399':'#fbbf24','P',!nearOpt);
-
-  // Distance gauge
-  let gX=30,gY=455,gW=220,gH=20;
-  let maxD=Math.hypot(A.x-30,A.y-RIVER_Y)+Math.hypot(30-B.x,RIVER_Y-B.y);
-  let ratio=(total-dOpt)/Math.max(maxD-dOpt,1);
-  ctx.fillStyle='#1e293b';ctx.fillRect(gX,gY,gW,gH);
-  let grad=ctx.createLinearGradient(gX,0,gX+gW,0);
-  grad.addColorStop(0,'#34d399');grad.addColorStop(1,'#ef4444');
-  ctx.fillStyle=grad;ctx.fillRect(gX,gY,gW*Math.min(1,Math.max(0,ratio)),gH);
-  ctx.strokeStyle='#475569';ctx.strokeRect(gX,gY,gW,gH);
-  ctx.fillStyle='#e2e8f0';ctx.font='12px sans-serif';
-  ctx.fillText(`AP+PB = ${total.toFixed(0)}  (最短=${dOpt.toFixed(0)})`,gX,gY-6);
-
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText('将军饮马问题',20,32);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
-  ctx.fillText('A→河l饮水→B，求最短路径',20,52);
-  ctx.fillText('方法：作A关于l的对称点A\'',20,72);
-  ctx.fillText('✨ P沿河滑动，靠近最优解时变绿',20,96);
-  ctx.fillText('看下方距离条：越短越绿',20,116);
+  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);let A={x:140,y:155},B={x:540,y:105};
+  dl(30,RIVER_Y,DESIGN_W-30,RIVER_Y,'#475569',2.5);ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';ctx.fillText('直线 l（河流）',DESIGN_W-150,RIVER_Y-10);
+  let Ar={x:A.x,y:RIVER_Y+(RIVER_Y-A.y)};dl(A.x,A.y,Ar.x,Ar.y,'#475569',1,true);dp(Ar.x,Ar.y,4,'#64748b',"A'");
+  let t_opt=(RIVER_Y-Ar.y)/(B.y-Ar.y),Popt={x:Ar.x+t_opt*(B.x-Ar.x),y:RIVER_Y};
+  let pX=110+(Math.sin(time*0.55*speed)*0.5+0.5)*420,P={x:pX,y:RIVER_Y};addTrail(P.x,P.y);drawTrails();
+  dl(A.x,A.y,P.x,P.y,'#60a5fa',2.5);dl(P.x,P.y,B.x,B.y,'#60a5fa',2.5);dl(Ar.x,Ar.y,B.x,B.y,'#f472b6',1.5,true);
+  let dAP=Math.hypot(A.x-P.x,A.y-P.y),dPB=Math.hypot(P.x-B.x,P.y-B.y),total=dAP+dPB;
+  let dOpt=Math.hypot(A.x-Popt.x,A.y-Popt.y)+Math.hypot(Popt.x-B.x,Popt.y-B.y),nearOpt=Math.abs(P.x-Popt.x)<15;
+  dp(Popt.x,Popt.y,6,'#f472b6','最优P');dp(A.x,A.y,6,'#60a5fa','A');dp(B.x,B.y,5,'#f472b6','B');dp(P.x,P.y,7,nearOpt?'#34d399':'#fbbf24','P',!nearOpt);
+  let gX=30,gY=455,gW=220,gH=20,maxD=Math.hypot(A.x-30,A.y-RIVER_Y)+Math.hypot(30-B.x,RIVER_Y-B.y),ratio=Math.max(0,Math.min(1,(total-dOpt)/Math.max(maxD-dOpt,1)));
+  ctx.fillStyle='#1e293b';ctx.fillRect(gX,gY,gW,gH);let grad=ctx.createLinearGradient(gX,0,gX+gW,0);grad.addColorStop(0,'#34d399');grad.addColorStop(1,'#ef4444');ctx.fillStyle=grad;ctx.fillRect(gX,gY,gW*ratio,gH);ctx.strokeStyle='#475569';ctx.strokeRect(gX,gY,gW,gH);
+  ctx.fillStyle='#e2e8f0';ctx.font='12px sans-serif';ctx.fillText(`AP+PB=${total.toFixed(0)}(最短=${dOpt.toFixed(0)})`,gX,gY-6);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('将军饮马',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('A→河l→B,对称法求最短',20,44);
 }
 
-// ═══════════ 胡不归 ═══════════
 function renderHubugui(){
-  ctx.clearRect(0,0,W,H);
-  let A={x:75,y:445},B={x:610,y:95},roadAngle=-0.32,roadLen=560;
-  let roadEnd={x:A.x+roadLen*Math.cos(roadAngle),y:A.y+roadLen*Math.sin(roadAngle)};
-  dl(A.x,A.y,roadEnd.x,roadEnd.y,'#475569',2.5);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';ctx.fillText('公路 v₁=2（快）',roadEnd.x-145,roadEnd.y-14);
-  let pParam=0.28+Math.sin(time*0.45*speed)*0.28;
-  let P={x:A.x+pParam*roadLen*Math.cos(roadAngle),y:A.y+pParam*roadLen*Math.sin(roadAngle)};
-  addTrail(P.x,P.y);drawTrails();
-  dl(A.x,A.y,P.x,P.y,'#fbbf24',3);dl(P.x,P.y,B.x,B.y,'#60a5fa',3);
-  dl(A.x,A.y,B.x,B.y,'#334155',1,true);
-  let d_road=Math.hypot(A.x-P.x,A.y-P.y),d_off=Math.hypot(P.x-B.x,P.y-B.y);
-  let v1=2,v2=1,time_needed=d_road/v1+d_off/v2;
-  // Construction: sinα=v2/v1=k
-  let k=0.5,alpha=Math.asin(k),rayAngle=roadAngle-alpha;
-  let rayEnd={x:B.x+180*Math.cos(rayAngle),y:B.y+180*Math.sin(rayAngle)};
-  dl(B.x,B.y,rayEnd.x,rayEnd.y,'#f472b6',1.5,true);
-  function intersect(p1,p2,p3,p4){
-    let d=(p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x);
-    let t=((p1.x-p3.x)*(p3.y-p4.y)-(p1.y-p3.y)*(p3.x-p4.x))/d;
-    return{x:p1.x+t*(p2.x-p1.x),y:p1.y+t*(p2.y-p1.y)};
-  }
-  let Popt=intersect(A,roadEnd,B,rayEnd);
-  let t_opt=Math.hypot(A.x-Popt.x,A.y-Popt.y)/v1+Math.hypot(Popt.x-B.x,Popt.y-B.y)/v2;
-  dp(Popt.x,Popt.y,5,'#f472b6','最优P');
-  dp(A.x,A.y,5,'#f8fafc','A');dp(B.x,B.y,5,'#f472b6','B');
-  dp(P.x,P.y,7,'#fbbf24','P',true);
-
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText('胡不归问题',20,32);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
-  ctx.fillText('公路快(v₁=2)，野外慢(v₂=1)',20,52);
-  ctx.fillText(`当前时间 = ${time_needed.toFixed(1)}s`,20,74);
-  ctx.fillText(`最优时间 ≈ ${t_opt.toFixed(1)}s`,20,94);
-  ctx.fillText('核心：sinα=v₂/v₁=0.5 → α=30°',20,116);
-  ctx.fillText('✨ P沿公路滑动找最优折返点',20,138);
+  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);let A={x:75,y:445},B={x:610,y:95},rA=-0.32,rL=560,rd={x:A.x+rL*Math.cos(rA),y:A.y+rL*Math.sin(rA)};
+  dl(A.x,A.y,rd.x,rd.y,'#475569',2.5);ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';ctx.fillText('公路 v₁=2',rd.x-145,rd.y-14);
+  let pP=0.28+Math.sin(time*0.45*speed)*0.28,P={x:A.x+pP*rL*Math.cos(rA),y:A.y+pP*rL*Math.sin(rA)};addTrail(P.x,P.y);drawTrails();
+  dl(A.x,A.y,P.x,P.y,'#fbbf24',3);dl(P.x,P.y,B.x,B.y,'#60a5fa',3);dl(A.x,A.y,B.x,B.y,'#334155',1,true);
+  let dr=Math.hypot(A.x-P.x,A.y-P.y),dof=Math.hypot(P.x-B.x,P.y-B.y),tn=dr/2+dof;
+  dp(A.x,A.y,5,'#f8fafc','A');dp(B.x,B.y,5,'#f472b6','B');dp(P.x,P.y,7,'#fbbf24','P',true);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('胡不归',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`总时间≈${tn.toFixed(1)}s`,20,44);ctx.fillText('sinα=v₂/v₁=0.5→α=30°',20,60);
 }
 
-// ═══════════ 阿波罗尼斯圆 ═══════════
 function renderApollonius(){
-  ctx.clearRect(0,0,W,H);
-  let A={x:145,y:330},B={x:605,y:330},k=2.0;
-  let AB=B.x-A.x,r=Math.abs(k*AB/(k*k-1)),cx=A.x+AB*k*k/(k*k-1),cy=A.y;
-  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;ctx.stroke();
-  ctx.setLineDash([5,3]);ctx.strokeStyle='#1e3a5f';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
-  dp(cx,cy,3,'#64748b','圆心');
-  let pAng=time*0.5*speed;
-  let P={x:cx+r*Math.cos(pAng),y:cy+r*Math.sin(pAng)};
-  addTrail(P.x,P.y);drawTrails();
-  dl(A.x,A.y,B.x,B.y,'#475569',1,true);
-  dl(A.x,A.y,P.x,P.y,'#60a5fa',2.5);dl(B.x,B.y,P.x,P.y,'#f472b6',2.5);
-  let pa=Math.hypot(A.x-P.x,A.y-P.y),pb=Math.hypot(B.x-P.x,B.y-P.y);
-  let ratio=pa/pb,stable=Math.abs(ratio-k)<0.05;
-  dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#f472b6','B');
-  dp(P.x,P.y,7,stable?'#34d399':'#fbbf24','P',true);
-
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText('阿波罗尼斯圆',20,32);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
-  ctx.fillText(`PA/PB = ${ratio.toFixed(2)} ≈ ${k}（定值）`,20,54);
-  ctx.fillText('满足PA/PB=k的点P的轨迹是圆',20,76);
-  ctx.fillText(`圆心在AB上，半径=${r.toFixed(0)}px`,20,98);
-  ctx.fillText('✨ P沿圆运动，比值始终不变！',20,120);
+  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);let A={x:145,y:330},B={x:605,y:330},k=2.0,AB=B.x-A.x,r=Math.abs(k*AB/(k*k-1)),cx=A.x+AB*k*k/(k*k-1);
+  ctx.beginPath();ctx.arc(cx,A.y,r,0,Math.PI*2);ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;ctx.stroke();
+  let pA=time*0.5*speed,P={x:cx+r*Math.cos(pA),y:A.y+r*Math.sin(pA)};addTrail(P.x,P.y);drawTrails();
+  dl(A.x,A.y,B.x,B.y,'#475569',1,true);dl(A.x,A.y,P.x,P.y,'#60a5fa',2.5);dl(B.x,B.y,P.x,P.y,'#f472b6',2.5);
+  let pa=Math.hypot(A.x-P.x,A.y-P.y),pb=Math.hypot(B.x-P.x,B.y-P.y),ratio=pa/pb;
+  dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#f472b6','B');dp(P.x,P.y,7,Math.abs(ratio-k)<0.05?'#34d399':'#fbbf24','P',true);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('阿波罗尼斯圆',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`PA/PB=${ratio.toFixed(2)}≈${k}`,20,44);ctx.fillText('✨ 比值始终不变',20,60);
 }
 
-// ═══════════ 费马点 ═══════════
 function renderFermat(){
-  ctx.clearRect(0,0,W,H);
-  let A={x:220,y:95},B={x:575,y:275},C={x:325,y:485};
+  ctx.clearRect(0,0,DESIGN_W,DESIGN_H);let A={x:220,y:95},B={x:575,y:275},C={x:325,y:485};
   dl(A.x,A.y,B.x,B.y,'#60a5fa',3);dl(B.x,B.y,C.x,C.y,'#60a5fa',3);dl(C.x,C.y,A.x,A.y,'#60a5fa',3);
-  function equiOuter(p1,p2){
-    let dx=p2.x-p1.x,dy=p2.y-p1.y,mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
-    return{x:mx-dy*Math.sqrt(3)/2,y:my+dx*Math.sqrt(3)/2};
-  }
-  let Cp=equiOuter(A,B),Ap=equiOuter(B,C),Bp=equiOuter(C,A);
-  // Faded equilateral triangles
-  ctx.fillStyle='rgba(96,165,250,0.05)';ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.lineTo(Cp.x,Cp.y);ctx.closePath();ctx.fill();
-  ctx.fillStyle='rgba(244,114,182,0.05)';ctx.beginPath();ctx.moveTo(B.x,B.y);ctx.lineTo(C.x,C.y);ctx.lineTo(Ap.x,Ap.y);ctx.closePath();ctx.fill();
-  ctx.fillStyle='rgba(52,211,153,0.05)';ctx.beginPath();ctx.moveTo(C.x,C.y);ctx.lineTo(A.x,A.y);ctx.lineTo(Bp.x,Bp.y);ctx.closePath();ctx.fill();
-  let pulse=Math.sin(time*1*speed)*0.3+0.7;
-  ctx.strokeStyle=`rgba(251,191,36,${pulse})`;ctx.lineWidth=2;ctx.setLineDash([7,5]);
-  ctx.beginPath();ctx.moveTo(Cp.x,Cp.y);ctx.lineTo(C.x,C.y);ctx.stroke();ctx.setLineDash([]);
-  dl(Ap.x,Ap.y,A.x,A.y,'#fbbf24',1.5,true);
-  dl(Bp.x,Bp.y,B.x,B.y,'#fbbf24',1.5,true);
-  function intersect(p1,p2,p3,p4){
-    let d=(p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x);
-    let t=((p1.x-p3.x)*(p3.y-p4.y)-(p1.y-p3.y)*(p3.x-p4.x))/d;
-    return{x:p1.x+t*(p2.x-p1.x),y:p1.y+t*(p2.y-p1.y)};
-  }
-  let F=intersect(A,Ap,B,Bp);
+  function eo(p1,p2){let dx=p2.x-p1.x,dy=p2.y-p1.y,mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;return{x:mx-dy*Math.sqrt(3)/2,y:my+dx*Math.sqrt(3)/2}}
+  let Cp=eo(A,B),Ap=eo(B,C),Bp=eo(C,A);
+  function is(p1,p2,p3,p4){let d=(p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x);let t=((p1.x-p3.x)*(p3.y-p4.y)-(p1.y-p3.y)*(p3.x-p4.x))/d;return{x:p1.x+t*(p2.x-p1.x),y:p1.y+t*(p2.y-p1.y)}}
+  let F=is(A,Ap,B,Bp);
   dl(F.x,F.y,A.x,A.y,'#34d399',3);dl(F.x,F.y,B.x,B.y,'#34d399',3);dl(F.x,F.y,C.x,C.y,'#34d399',3);
-  // 120° arcs
-  for(let i=0;i<3;i++){
-    let v1=[A,B,C][i],v2=[A,B,C][(i+1)%3];
-    let a1=Math.atan2(v1.y-F.y,v1.x-F.x),a2=Math.atan2(v2.y-F.y,v2.x-F.x);
-    ctx.beginPath();ctx.arc(F.x,F.y,32,a1,a2);ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke();
-  }
-  let total=Math.hypot(F.x-A.x,F.y-A.y)+Math.hypot(F.x-B.x,F.y-B.y)+Math.hypot(F.x-C.x,F.y-C.y);
-  dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#60a5fa','B');dp(C.x,C.y,5,'#60a5fa','C');
-  dp(F.x,F.y,8,'#f472b6','F',true);
-  dp(Cp.x,Cp.y,3,'#64748b',"C'");dp(Ap.x,Ap.y,3,'#64748b',"A'");dp(Bp.x,Bp.y,3,'#64748b',"B'");
-
-  ctx.fillStyle='#f1f5f9';ctx.font='bold 16px sans-serif';ctx.fillText('费马点',20,32);
-  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
-  ctx.fillText(`FA+FB+FC ≈ ${total.toFixed(0)}（最小）`,20,54);
-  ctx.fillText('∠AFB=∠BFC=∠CFA=120°',20,76);
-  ctx.fillText('构造：各边向外作等边△',20,98);
-  ctx.fillText('AA\'、BB\'、CC\'交于费马点',20,120);
+  for(let i=0;i<3;i++){let v1=[A,B,C][i],v2=[A,B,C][(i+1)%3],a1=Math.atan2(v1.y-F.y,v1.x-F.x),a2=Math.atan2(v2.y-F.y,v2.x-F.x);ctx.beginPath();ctx.arc(F.x,F.y,32,a1,a2);ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;ctx.stroke()}
+  let tl=Math.hypot(F.x-A.x,F.y-A.y)+Math.hypot(F.x-B.x,F.y-B.y)+Math.hypot(F.x-C.x,F.y-C.y);
+  dp(A.x,A.y,5,'#60a5fa','A');dp(B.x,B.y,5,'#60a5fa','B');dp(C.x,C.y,5,'#60a5fa','C');dp(F.x,F.y,8,'#f472b6','F',true);
+  ctx.fillStyle='#f1f5f9';ctx.font='bold 15px sans-serif';ctx.fillText('费马点',20,28);ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText(`FA+FB+FC≈${tl.toFixed(0)}`,20,44);ctx.fillText('三线夹角=120°',20,60);
 }
 
-function render(){
-  switch(currentModel){
-    case'general':renderGeneral();break;case'hubugui':renderHubugui();break;
-    case'apollonius':renderApollonius();break;case'fermat':renderFermat();break;
-  }
-}
+function render(){switch(currentModel){case'general':renderGeneral();break;case'hubugui':renderHubugui();break;case'apollonius':renderApollonius();break;case'fermat':renderFermat();break}}
 
-function buildSidebar(){
-  let html=`<a href="index.html" class="back-link">← 返回首页</a>`;
-  let models=[
-    {id:'general',name:'🐴 将军饮马 · P沿河滑动'},
-    {id:'hubugui',name:'🏃 胡不归 · P沿公路动'},
-    {id:'apollonius',name:'⭕ 阿波罗尼斯圆 · P绕圆跑'},
-    {id:'fermat',name:'📍 费马点 · 120°展演'},
-  ];
-  for(let m of models)html+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.name}</button>`;
-  html+=`<div class="control-group"><h3>⚡ 动画速度</h3>
-    <input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="speedS">
-    <span style="font-size:.75em;color:#64748b">当前: <span class="vd" id="speedV">${speed.toFixed(1)}x</span></span>
-  </div>`;
-  let infos={
-    general:'<b>将军饮马：</b><br>A→河l→B，求最短路径<br>→ 作A关于l的<span class="hl">对称点A\'</span><br>→ A\'B交l于P即为最优<br>→ 原理：两点间<span class="hl">线段最短</span><br>→ 应用：折线和最小问题',
-    hubugui:'<b>胡不归问题：</b><br>不同路段速度不同<br>→ 设<span class="hl">k=v₂/v₁=sinα</span><br>→ 构造α角，用垂线段求最短时间<br>→ 核心：化"时间"为"距离"',
-    apollonius:'<b>阿波罗尼斯圆：</b><br>满足<span class="hl">PA/PB=k</span>的P的轨迹是圆<br>→ 圆心在AB上<br>→ 用于"PA+k·PB"最值<br>→ 配合相似三角形使用',
-    fermat:'<b>费马点：</b><br>到三顶点距离和最小的点<br>→ <span class="hl">三线夹角均为120°</span><br>→ 向外作等边△，连线交点<br>→ 若一角≥120°，该角顶点即费马点',
-  };
-  html+=`<div class="info-box">${infos[currentModel]}</div>`;
-  sidebar.innerHTML=html;
-  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildSidebar();render()}));
-  document.getElementById('speedS').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('speedV').textContent=speed.toFixed(1)});
+function buildUI(){
+  let models=[{id:'general',n:'🐴 将军饮马',sn:'将军饮马'},{id:'hubugui',n:'🏃 胡不归',sn:'胡不归'},{id:'apollonius',n:'⭕ 阿波罗尼斯圆',sn:'阿氏圆'},{id:'fermat',n:'📍 费马点',sn:'费马点'}];
+  let st='<a href="index.html" class="back-link">← 返回首页</a><div style="display:flex;flex-direction:column;gap:4px">';
+  models.forEach(m=>{st+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.n}</button>`});
+  st+=`</div><div class="ctrl"><h3>⚡ 速度</h3><input type="range" min="0.2" max="3" step="0.1" value="${speed}" id="ss"><span style="font-size:.72em;color:#64748b"><span class="vd" id="sv">${speed.toFixed(1)}x</span></span></div>`;
+  let infos={general:'<b>将军饮马</b><br>A→河l→B最短路径<br>作<span class="hl">对称点</span>，化折为直',hubugui:'<b>胡不归</b><br>不同速度的最短时间<br>sinα=<span class="hl">v₂/v₁</span>',apollonius:'<b>阿波罗尼斯圆</b><br><span class="hl">PA/PB=k</span>的轨迹是圆<br>比值始终不变',fermat:'<b>费马点</b><br>到三顶点<span class="hl">距离和最小</span><br>三线夹角=120°'};
+  st+=`<div class="info-box">${infos[currentModel]}</div>`;
+  document.getElementById('sidebar').innerHTML=st;
+  let mt='';models.forEach(m=>{mt+=`<button class="tab-btn ${currentModel===m.id?'active':''}" data-m="${m.id}">${m.sn}</button>`});
+  document.getElementById('mobileTabs').innerHTML=mt;document.getElementById('mobilePanel').innerHTML=st;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{currentModel=b.dataset.m;trails.length=0;buildUI();render()}));
+  document.getElementById('ss').addEventListener('input',e=>{speed=+e.target.value;document.getElementById('sv').textContent=speed.toFixed(1)});
 }
-
-function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}
-buildSidebar();render();requestAnimationFrame(animate);
+resizeCanvas();buildUI();render();
+function animate(ts){time=ts/1000;render();requestAnimationFrame(animate)}requestAnimationFrame(animate);
 </script>
 </body>
 </html>
