@@ -56,9 +56,10 @@ canvas{display:block;max-width:100%;max-height:100%;border-radius:6px}
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 const DESIGN_W=750,DESIGN_H=600;canvas.width=DESIGN_W;canvas.height=DESIGN_H;
 let currentModel='handshake',time=0,speed=1;const trails=[];
+let panX=0,panY=0,isDragging=false,dsX,dsY;
 let panelOpen=true;
 function togglePanel(){panelOpen=!panelOpen;document.getElementById('mobilePanel').classList.toggle('collapsed',!panelOpen);document.getElementById('panelToggle').textContent=panelOpen?'⚙ 速度控制':'⚙ 速度控制 ▸'}
-function resizeCanvas(){const w=canvas.parentElement,dpr=window.devicePixelRatio||1;const cw=w.clientWidth,ch=w.clientHeight;canvas.width=cw*dpr;canvas.height=ch*dpr;canvas.style.width=cw+'px';canvas.style.height=ch+'px';sX=canvas.width/DESIGN_W;sY=canvas.height/DESIGN_H}
+function resizeCanvas(){const w=canvas.parentElement,dpr=window.devicePixelRatio||1;const cw=w.clientWidth,ch=w.clientHeight;canvas.width=cw*dpr;canvas.height=ch*dpr;canvas.style.width=cw+'px';canvas.style.height=ch+'px';sX=canvas.width/DESIGN_W;sY=canvas.height/DESIGN_H;panX=0;panY=0;isDragging=false}
 window.addEventListener('resize',()=>{resizeCanvas();trails.length=0});
 function addTrail(x,y){trails.push({x,y,life:1});if(trails.length>60)trails.shift()}
 function drawTrails(){for(let t of trails){ctx.beginPath();ctx.arc(t.x,t.y,2.5,0,Math.PI*2);ctx.fillStyle=`rgba(251,191,36,${t.life*0.5})`;ctx.fill();t.life-=0.025}for(let i=trails.length-1;i>=0;i--)if(trails[i].life<=0)trails.splice(i,1)}
@@ -124,7 +125,7 @@ function renderMidline(){
   ctx.fillStyle='#f1f5f9';ctx.font='bold 18px sans-serif';ctx.fillText('倍长中线法',20,28);ctx.fillStyle='#94a3b8';ctx.font='14px sans-serif';ctx.fillText('AM是中线→延长至D使MD=AM',20,46);
 }
 
-function render(){ctx.setTransform(sX,0,0,sY,0,0);switch(currentModel){case'handshake':renderHandshake();break;case'threeline':renderThreeLine();break;case'ashape':renderAShape();break;case'xshape':renderXShape();break;case'midline':renderMidline();break}}
+function render(){ctx.setTransform(sX,0,0,sY,panX,panY);switch(currentModel){case'handshake':renderHandshake();break;case'threeline':renderThreeLine();break;case'ashape':renderAShape();break;case'xshape':renderXShape();break;case'midline':renderMidline();break}}
 
 function buildUI(){
   let models=[{id:'handshake',n:'🤝 手拉手',sn:'手拉手'},{id:'threeline',n:'📏 一线三等角',sn:'一线三等角'},{id:'ashape',n:'🔺 A字型相似',sn:'A字相似'},{id:'xshape',n:'✖ X字型相似',sn:'X字相似'},{id:'midline',n:'📐 倍长中线',sn:'倍长中线'}];
@@ -140,9 +141,12 @@ function buildUI(){
   document.querySelectorAll('.speed-slider').forEach(sl=>sl.addEventListener('input',e=>{speed=+e.target.value;document.querySelectorAll('.speed-slider').forEach(s=>s.value=speed);document.querySelectorAll('.speed-val').forEach(s=>s.textContent=speed.toFixed(1))}));
 }
 const overlay=document.getElementById('fullscreen-overlay'),fsContainer=overlay.querySelector('.fs-canvas-container'),canvasWrap=document.querySelector('.canvas-wrap');let isFullscreen=false;
-function enterFS(){if(isFullscreen)return;isFullscreen=true;fsContainer.appendChild(canvas);overlay.classList.add('active');resizeCanvas();trails.length=0}
-function exitFS(){if(!isFullscreen)return;isFullscreen=false;canvasWrap.appendChild(canvas);overlay.classList.remove('active');resizeCanvas();trails.length=0}
-canvas.addEventListener('pointerdown',()=>enterFS());
+function enterFS(){if(isFullscreen)return;isFullscreen=true;fsContainer.appendChild(canvas);overlay.classList.add('active');resizeCanvas();trails.length=0;canvas.style.cursor='grab'}
+function exitFS(){if(!isFullscreen)return;isFullscreen=false;canvasWrap.appendChild(canvas);overlay.classList.remove('active');resizeCanvas();trails.length=0;canvas.style.cursor=''}
+canvas.addEventListener('pointerdown',e=>{if(!isFullscreen){enterFS();return}isDragging=true;dsX=e.clientX;dsY=e.clientY;canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing'});
+canvas.addEventListener('pointermove',e=>{if(!isDragging)return;panX+=e.clientX-dsX;panY+=e.clientY-dsY;dsX=e.clientX;dsY=e.clientY});
+canvas.addEventListener('pointerup',()=>{if(isDragging){isDragging=false;canvas.style.cursor='grab'}});
+canvas.addEventListener('pointercancel',()=>{isDragging=false;canvas.style.cursor='grab'});
 canvasWrap.querySelector('.canvas-hint').addEventListener('pointerdown',e=>{e.stopPropagation();enterFS()});
 document.querySelector('.fs-close-btn').addEventListener('pointerdown',e=>{e.stopPropagation();exitFS()});
 overlay.addEventListener('pointerdown',e=>{if(e.target===overlay)exitFS()});
